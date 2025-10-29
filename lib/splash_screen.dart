@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'login_page.dart'; // ✅ arahkan ke halaman login, bukan main.dart
+import 'package:lottie/lottie.dart';
+import 'login_page.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -10,32 +11,23 @@ class SplashScreen extends StatefulWidget {
 }
 
 class _SplashScreenState extends State<SplashScreen> {
-  double _progressValue = 0.0;
-
   @override
   void initState() {
     super.initState();
 
-    // Jalankan animasi progress dan navigasi otomatis
-    Timer.periodic(const Duration(milliseconds: 200), (timer) {
-      setState(() {
-        _progressValue += 0.1;
-        if (_progressValue >= 1) {
-          _progressValue = 1;
-          timer.cancel();
-
-          // ✅ Arahkan ke halaman login, bukan MainNavigation
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (_) => const LoginPage()),
-          );
-        }
-      });
+    // Setelah 5 detik, otomatis ke halaman login
+    Future.delayed(const Duration(seconds: 5), () {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const LoginPage()),
+      );
     });
   }
 
   @override
   Widget build(BuildContext context) {
+    const mainColor = Color(0xFFBA0403); // 🎨 warna utama kamu
+
     return Scaffold(
       backgroundColor: Colors.white,
       body: Center(
@@ -44,18 +36,25 @@ class _SplashScreenState extends State<SplashScreen> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              // === Gambar ilustrasi ===
-              Image.network(
-                "https://i.ibb.co/3MkXk4N/driver-illustration.png",
-                height: 180,
+              // === 🚗 Animasi mobil merah dari Lottie ===
+              Padding(
+                padding: const EdgeInsets.only(top: 40),
+                child: Lottie.asset(
+                  'assets/animation/Red Car Drive.json',
+                  height: 220,
+                  fit: BoxFit.contain,
+                  repeat: true,
+                  animate: true,
+                ),
               ),
-              const SizedBox(height: 20),
+
+              const SizedBox(height: 30),
 
               // === Judul utama ===
               const Text(
                 "Microsleep Guard",
                 style: TextStyle(
-                  color: Colors.red,
+                  color: mainColor,
                   fontWeight: FontWeight.bold,
                   fontSize: 22,
                 ),
@@ -72,33 +71,39 @@ class _SplashScreenState extends State<SplashScreen> {
                 ),
                 textAlign: TextAlign.center,
               ),
-
               const SizedBox(height: 40),
 
-              // === Progress bar ===
-              LinearProgressIndicator(
-                value: _progressValue,
-                backgroundColor: Colors.grey[300],
-                color: Colors.red,
-                minHeight: 6,
-                borderRadius: BorderRadius.circular(10),
-              ),
-              const SizedBox(height: 8),
-              const Text(
-                "Sistem siap digunakan",
-                style: TextStyle(fontSize: 13, color: Colors.black54),
-              ),
-
-              const SizedBox(height: 30),
-              const Text(
-                "•••",
-                style: TextStyle(
-                  fontSize: 20,
-                  color: Colors.red,
-                  letterSpacing: 4,
+              // === Progress bar halus ===
+              TweenAnimationBuilder<double>(
+                tween: Tween(begin: 0, end: 1),
+                duration: const Duration(seconds: 5),
+                builder: (context, value, _) => Column(
+                  children: [
+                    LinearProgressIndicator(
+                      value: value,
+                      backgroundColor: Colors.grey[300],
+                      color: mainColor, // 🎨 warna progress bar
+                      minHeight: 6,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    const SizedBox(height: 8),
+                    const Text(
+                      "Sistem siap digunakan",
+                      style: TextStyle(fontSize: 13, color: Colors.black54),
+                    ),
+                  ],
                 ),
               ),
 
+              const SizedBox(height: 30),
+              Text(
+                "•••",
+                style: TextStyle(
+                  fontSize: 20,
+                  color: mainColor,
+                  letterSpacing: 4,
+                ),
+              ),
               const SizedBox(height: 40),
 
               // === Footer ===

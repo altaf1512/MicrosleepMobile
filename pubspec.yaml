@@ -21,6 +21,8 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^5.0.0
+  lottie: ^3.1.0
+
 
 flutter:
   uses-material-design: true
@@ -28,3 +30,12 @@ flutter:
   # 🧩 Daftar asset lokal
   assets:
     - assets/monyet.jpeg
+    - assets/gambar.png
+    - assets/animation/Red Car Drive.json
+    - assets/animation/sign in red.json
+    - assets/animation/red 1.json
+    - assets/animation/Black Check.json
+
+
+
+
