@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart';
+import 'package:curved_navigation_bar/curved_navigation_bar.dart';
 import 'splash_screen.dart';
 import 'dashboard_page.dart';
 import 'history_page.dart';
@@ -23,13 +24,13 @@ class MyApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.red),
         useMaterial3: true,
       ),
-      home: const SplashScreen(), // ✅ SplashScreen muncul pertama
+      home: const SplashScreen(),
     );
   }
 }
 
 // ==========================
-// 🔻 Bottom Navigation Page
+// 🌊 Curved Navigation Bar (Merah Solid)
 // ==========================
 class MainNavigation extends StatefulWidget {
   const MainNavigation({super.key});
@@ -40,58 +41,43 @@ class MainNavigation extends StatefulWidget {
 
 class _MainNavigationState extends State<MainNavigation> {
   int _selectedIndex = 0;
-  late final List<Widget> _pages;
 
-  @override
-  void initState() {
-    super.initState();
+  final List<Widget> _pages = const [
+    DashboardPage(),
+    LokasiPage(),
+    RiwayatPage(),
+    PengaturanPage(),
+  ];
 
-    // ✅ Dashboard dikasih callback agar bisa ganti tab dari dalam
-    _pages = [
-      DashboardPage(onTabSelected: _onItemTapped),
-      const LokasiPage(),
-      const RiwayatPage(),
-      const PengaturanPage(),
-    ];
-  }
-
-  // Fungsi untuk ganti tab di BottomNavigationBar
-  void _onItemTapped(int index) {
-    setState(() {
-      _selectedIndex = index;
-    });
-  }
+  final GlobalKey<CurvedNavigationBarState> _navKey = GlobalKey();
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      extendBody: true,
       body: _pages[_selectedIndex],
-      bottomNavigationBar: BottomNavigationBar(
-        type: BottomNavigationBarType.fixed,
-        currentIndex: _selectedIndex,
-        selectedItemColor: Colors.red,
-        unselectedItemColor: Colors.grey,
-        showUnselectedLabels: true,
-        onTap: _onItemTapped,
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(LucideIcons.layoutDashboard),
-            label: 'Dashboard',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(LucideIcons.mapPin),
-            label: 'Lokasi',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(LucideIcons.bell),
-            label: 'Riwayat',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(LucideIcons.settings),
-            label: 'Pengaturan',
-          ),
-        ],
-      ),
+      bottomNavigationBar: CurvedNavigationBar(
+  key: _navKey,
+  index: _selectedIndex,
+  height: 65,
+  backgroundColor: Colors.transparent,
+  color: const Color(0xFFB00000), // 🔴 warna merah solid
+  buttonBackgroundColor: const Color(0xFFB00000), // ubah ke merah juga
+  animationCurve: Curves.easeInOut,
+  animationDuration: const Duration(milliseconds: 400),
+  items: const [
+    Icon(LucideIcons.layoutDashboard, size: 28, color: Colors.white),
+    Icon(LucideIcons.mapPin, size: 28, color: Colors.white),
+    Icon(LucideIcons.history, size: 28, color: Colors.white),
+    Icon(LucideIcons.settings, size: 28, color: Colors.white),
+  ],
+  onTap: (index) {
+    setState(() {
+      _selectedIndex = index;
+    });
+  },
+),
+
     );
   }
 }
