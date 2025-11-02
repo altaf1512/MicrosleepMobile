@@ -2,12 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
 class DashboardPage extends StatelessWidget {
-  final void Function(int)? onTabSelected; // ✅ callback untuk ganti tab navbar
+  final void Function(int)? onTabSelected;
 
   const DashboardPage({super.key, this.onTabSelected});
 
   @override
   Widget build(BuildContext context) {
+    const mainColor = Color(0xFFBA0403);
+
     return Scaffold(
       backgroundColor: Colors.grey[100],
       body: SafeArea(
@@ -16,123 +18,183 @@ class DashboardPage extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // === Header ===
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text(
-                    'Selamat datang!',
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.red,
-                    ),
+              // === 🌅 Header dengan gradient ===
+              Container(
+                width: double.infinity,
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFFBA0403), Color(0xFFE34234)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
                   ),
-
-                  // ✅ Klik profil untuk pindah ke tab Pengaturan
-                  GestureDetector(
-                    onTap: () {
-                      if (onTabSelected != null) {
-                        onTabSelected!(3); // Tab index ke-3 = Pengaturan
-                      }
-                    },
-                    child: CircleAvatar(
-                      backgroundColor: Colors.red[100],
-                      child: const Icon(LucideIcons.user, color: Colors.red),
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.red.shade200.withOpacity(0.5),
+                      blurRadius: 10,
+                      offset: const Offset(0, 4),
                     ),
-                  ),
-                ],
+                  ],
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    // 👋 Welcome text
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: const [
+                        Text(
+                          "Selamat Datang, Pengemudi!",
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 18,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        SizedBox(height: 4),
+                        Text(
+                          "Pantau kondisi berkendara Anda",
+                          style: TextStyle(color: Colors.white70, fontSize: 13),
+                        ),
+                      ],
+                    ),
+                    // 👤 Avatar interaktif
+                    GestureDetector(
+                      onTap: () {
+                        if (onTabSelected != null) {
+                          onTabSelected!(3);
+                        }
+                      },
+                      child: CircleAvatar(
+                        radius: 24,
+                        backgroundColor: Colors.white.withOpacity(0.2),
+                        child:
+                            const Icon(LucideIcons.user, color: Colors.white),
+                      ),
+                    ),
+                  ],
+                ),
               ),
 
-              const SizedBox(height: 8),
+              const SizedBox(height: 20),
 
+              // === ⏱️ Waktu & Tanggal ===
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: const [
                   Row(
                     children: [
-                      Icon(LucideIcons.clock, size: 16),
+                      Icon(LucideIcons.clock, size: 16, color: Colors.black54),
                       SizedBox(width: 6),
-                      Text('14:16:09'),
+                      Text('14:16:09',
+                          style: TextStyle(color: Colors.black54)),
                     ],
                   ),
-                  Text('3 November 2025'),
+                  Text('3 November 2025',
+                      style: TextStyle(color: Colors.black54)),
                 ],
               ),
 
-              const SizedBox(height: 16),
+              const SizedBox(height: 20),
 
-              // === Status Card ===
+              // === ⚙️ Status Card ===
               Container(
-                padding: const EdgeInsets.symmetric(vertical: 16),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(16),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black12.withOpacity(0.05),
+                      blurRadius: 8,
+                      offset: const Offset(0, 3),
+                    ),
+                  ],
                 ),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceAround,
                   children: [
                     _statusItem(
-                        icon: LucideIcons.cpu,
-                        label: 'Perangkat IoT',
-                        value: 'Terhubung',
-                        color: Colors.green),
+                      icon: LucideIcons.cpu,
+                      label: "Perangkat IoT",
+                      value: "Terhubung",
+                      color: Colors.green,
+                    ),
                     _statusItem(
-                        icon: LucideIcons.mapPin,
-                        label: 'GPS',
-                        value: 'Tidak Terhubung',
-                        color: Colors.red),
+                      icon: LucideIcons.mapPin,
+                      label: "GPS",
+                      value: "Tidak Aktif",
+                      color: Colors.red,
+                    ),
                     _statusItem(
-                        icon: LucideIcons.battery,
-                        label: 'Baterai',
-                        value: '85%',
-                        color: Colors.black87),
+                      icon: LucideIcons.battery,
+                      label: "Baterai",
+                      value: "85%",
+                      color: Colors.orange,
+                    ),
                   ],
                 ),
               ),
 
-              const SizedBox(height: 16),
+              const SizedBox(height: 20),
 
-              // === Statistik Perjalanan ===
+              // === 📊 Statistik Perjalanan ===
               Container(
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.all(18),
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(16),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black12.withOpacity(0.05),
+                      blurRadius: 8,
+                      offset: const Offset(0, 3),
+                    ),
+                  ],
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const Text(
-                      'Statistik Perjalanan',
+                      "Statistik Perjalanan",
                       style:
-                          TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                          TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
                     ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 14),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceAround,
                       children: [
                         _infoBox(
-                            icon: LucideIcons.clock,
-                            label: 'Durasi Sesi',
-                            value: '00:01:17'),
+                          icon: LucideIcons.clock,
+                          label: "Durasi Sesi",
+                          value: "00:01:17",
+                          color: mainColor,
+                        ),
                         _infoBox(
-                            icon: LucideIcons.alertTriangle,
-                            label: 'Peringatan',
-                            value: '0'),
+                          icon: LucideIcons.alertTriangle,
+                          label: "Peringatan",
+                          value: "0",
+                          color: Colors.orange,
+                        ),
                       ],
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 20),
                     Container(
-                      padding: const EdgeInsets.all(12),
+                      padding: const EdgeInsets.all(14),
                       decoration: BoxDecoration(
                         color: Colors.green[50],
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(14),
                       ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text('Skor Keamanan'),
+                          const Text(
+                            "Skor Keamanan",
+                            style: TextStyle(fontWeight: FontWeight.w500),
+                          ),
                           const SizedBox(height: 6),
                           LinearProgressIndicator(
                             value: 1.0,
@@ -143,10 +205,10 @@ class DashboardPage extends StatelessWidget {
                           ),
                           const SizedBox(height: 6),
                           const Text(
-                            'Sangat Aman (100%)',
-                            style: TextStyle(
-                                fontSize: 13, color: Colors.green),
-                          )
+                            "Sangat Aman (100%)",
+                            style:
+                                TextStyle(fontSize: 13, color: Colors.green),
+                          ),
                         ],
                       ),
                     ),
@@ -154,14 +216,13 @@ class DashboardPage extends StatelessWidget {
                 ),
               ),
 
-              const SizedBox(height: 16),
+              const SizedBox(height: 24),
 
-              // === Tombol Alarm ===
+              // === 🚨 Tombol Alarm ===
               SizedBox(
                 width: double.infinity,
-                child: ElevatedButton(
+                child: ElevatedButton.icon(
                   onPressed: () {
-                    // 😂 Saat ditekan, tampilkan gambar monyet 1 layar
                     Navigator.push(
                       context,
                       MaterialPageRoute(
@@ -169,28 +230,38 @@ class DashboardPage extends StatelessWidget {
                       ),
                     );
                   },
+                  icon: const Icon(LucideIcons.bellRing, color: Colors.white),
+                  label: const Text(
+                    "Matikan Alarm / Monitoring",
+                    style: TextStyle(fontSize: 16, color: Colors.white),
+                  ),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.red,
+                    backgroundColor: mainColor,
                     padding: const EdgeInsets.symmetric(vertical: 14),
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(14),
                     ),
-                  ),
-                  child: const Text(
-                    'Matikan Alarm/Monitoring',
-                    style: TextStyle(color: Colors.white, fontSize: 16),
+                    elevation: 5,
+                    shadowColor: mainColor.withOpacity(0.5),
                   ),
                 ),
               ),
 
-              const SizedBox(height: 16),
+              const SizedBox(height: 24),
 
-              // === Ringkasan Peringatan ===
+              // === 🔔 Ringkasan Peringatan ===
               Container(
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.all(18),
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(16),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black12.withOpacity(0.05),
+                      blurRadius: 8,
+                      offset: const Offset(0, 3),
+                    ),
+                  ],
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -199,13 +270,16 @@ class DashboardPage extends StatelessWidget {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: const [
                         Text(
-                          'Ringkasan Peringatan Terbaru',
+                          "Ringkasan Peringatan Terbaru",
                           style: TextStyle(
                               fontWeight: FontWeight.w600, fontSize: 15),
                         ),
                         Text(
-                          'Lihat Detail',
-                          style: TextStyle(color: Colors.blue),
+                          "Lihat Semua",
+                          style: TextStyle(
+                            color: mainColor,
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
                       ],
                     ),
@@ -217,31 +291,34 @@ class DashboardPage extends StatelessWidget {
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: const [
-                          Icon(LucideIcons.alertOctagon, color: Colors.red),
+                          Icon(LucideIcons.alertOctagon,
+                              color: Colors.red, size: 28),
                           SizedBox(width: 12),
                           Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  'Deteksi Microsleep',
+                                  "Deteksi Microsleep",
                                   style: TextStyle(
                                     color: Colors.red,
-                                    fontWeight: FontWeight.w600,
+                                    fontWeight: FontWeight.bold,
                                   ),
                                 ),
+                                SizedBox(height: 4),
                                 Text(
-                                  'Mata tertutup selama 3 detik berturut-turut',
+                                  "Mata tertutup selama 3 detik berturut-turut",
                                   style: TextStyle(fontSize: 13),
                                 ),
                               ],
                             ),
                           ),
                           Text(
-                            '17m lalu',
+                            "17m lalu",
                             style: TextStyle(fontSize: 12, color: Colors.grey),
-                          )
+                          ),
                         ],
                       ),
                     ),
@@ -255,7 +332,7 @@ class DashboardPage extends StatelessWidget {
     );
   }
 
-  // --- Widget Helper ---
+  // === Helper Widgets ===
   Widget _statusItem({
     required IconData icon,
     required String label,
@@ -264,13 +341,13 @@ class DashboardPage extends StatelessWidget {
   }) {
     return Column(
       children: [
-        Icon(icon, color: color),
+        Icon(icon, color: color, size: 26),
         const SizedBox(height: 6),
         Text(label, style: const TextStyle(fontSize: 12)),
         Text(
           value,
           style: TextStyle(
-              fontSize: 12, fontWeight: FontWeight.bold, color: color),
+              fontSize: 13, fontWeight: FontWeight.bold, color: color),
         ),
       ],
     );
@@ -280,19 +357,27 @@ class DashboardPage extends StatelessWidget {
     required IconData icon,
     required String label,
     required String value,
+    required Color color,
   }) {
     return Container(
-      width: 120,
+      width: 130,
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.grey[100],
-        borderRadius: BorderRadius.circular(12),
+        color: color.withOpacity(0.05),
+        borderRadius: BorderRadius.circular(14),
       ),
       child: Column(
         children: [
-          Icon(icon, color: Colors.black54),
-          const SizedBox(height: 6),
-          Text(value, style: const TextStyle(fontWeight: FontWeight.bold)),
+          Icon(icon, color: color, size: 28),
+          const SizedBox(height: 8),
+          Text(
+            value,
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 15,
+              color: color,
+            ),
+          ),
           Text(label, style: const TextStyle(fontSize: 12)),
         ],
       ),
@@ -307,27 +392,21 @@ class FullscreenMonkeyPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       body: GestureDetector(
-        // Klik di mana saja untuk keluar
         onTap: () => Navigator.pop(context),
         child: Stack(
           fit: StackFit.expand,
           children: [
-            Image.asset(
-              "assets/monyet.jpeg",
-              fit: BoxFit.cover,
-            ),
+            Image.asset("assets/monyet.jpeg", fit: BoxFit.cover),
             Container(
-              color: Colors.black26,
+              color: Colors.black45,
               alignment: Alignment.center,
               child: const Text(
-                "....",
+                "Microsleep Alert!",
                 style: TextStyle(
                   color: Colors.white,
-                  fontSize: 28,
+                  fontSize: 30,
                   fontWeight: FontWeight.bold,
-                  shadows: [
-                    Shadow(blurRadius: 8, color: Colors.black),
-                  ],
+                  letterSpacing: 1.2,
                 ),
               ),
             ),
@@ -337,4 +416,3 @@ class FullscreenMonkeyPage extends StatelessWidget {
     );
   }
 }
-

@@ -11,12 +11,23 @@ class SplashScreen extends StatefulWidget {
 }
 
 class _SplashScreenState extends State<SplashScreen> {
+  int _dotCount = 0;
+  Timer? _timer;
+
   @override
   void initState() {
     super.initState();
 
-    // Setelah 5 detik, otomatis ke halaman login
+    // Animasi titik berkedip tiap 400ms
+    _timer = Timer.periodic(const Duration(milliseconds: 400), (timer) {
+      setState(() {
+        _dotCount = (_dotCount + 1) % 4; // 0,1,2,3 → ulang
+      });
+    });
+
+    // Setelah 5 detik ke halaman login
     Future.delayed(const Duration(seconds: 5), () {
+      _timer?.cancel(); // hentikan animasi titik
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (_) => const LoginPage()),
@@ -25,8 +36,14 @@ class _SplashScreenState extends State<SplashScreen> {
   }
 
   @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    const mainColor = Color(0xFFBA0403); // 🎨 warna utama kamu
+    const mainColor = Color(0xFFBA0403);
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -36,7 +53,7 @@ class _SplashScreenState extends State<SplashScreen> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              // === 🚗 Animasi mobil merah dari Lottie ===
+              // === 🚗 Animasi mobil merah ===
               Padding(
                 padding: const EdgeInsets.only(top: 40),
                 child: Lottie.asset(
@@ -50,7 +67,6 @@ class _SplashScreenState extends State<SplashScreen> {
 
               const SizedBox(height: 30),
 
-              // === Judul utama ===
               const Text(
                 "Microsleep Guard",
                 style: TextStyle(
@@ -61,7 +77,6 @@ class _SplashScreenState extends State<SplashScreen> {
               ),
               const SizedBox(height: 8),
 
-              // === Deskripsi singkat ===
               const Text(
                 "Sistem Keamanan Berkendara Anda yang\nSelalu Siaga Menjaga Keselamatan di Jalan",
                 style: TextStyle(
@@ -71,6 +86,7 @@ class _SplashScreenState extends State<SplashScreen> {
                 ),
                 textAlign: TextAlign.center,
               ),
+
               const SizedBox(height: 40),
 
               // === Progress bar halus ===
@@ -82,7 +98,7 @@ class _SplashScreenState extends State<SplashScreen> {
                     LinearProgressIndicator(
                       value: value,
                       backgroundColor: Colors.grey[300],
-                      color: mainColor, // 🎨 warna progress bar
+                      color: mainColor,
                       minHeight: 6,
                       borderRadius: BorderRadius.circular(10),
                     ),
@@ -96,14 +112,22 @@ class _SplashScreenState extends State<SplashScreen> {
               ),
 
               const SizedBox(height: 30),
-              Text(
-                "•••",
-                style: TextStyle(
-                  fontSize: 20,
-                  color: mainColor,
-                  letterSpacing: 4,
+
+              // === 🔄 Titik tiga animasi ===
+              AnimatedOpacity(
+                opacity: 1,
+                duration: const Duration(milliseconds: 300),
+                child: Text(
+                  '.' * _dotCount,
+                  style: const TextStyle(
+                    fontSize: 26,
+                    color: mainColor,
+                    letterSpacing: 4,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ),
+
               const SizedBox(height: 40),
 
               // === Footer ===
