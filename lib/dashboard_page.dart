@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart';
+import 'package:firebase_database/firebase_database.dart';
 
 class DashboardPage extends StatelessWidget {
   final void Function(int)? onTabSelected;
@@ -99,7 +100,7 @@ class DashboardPage extends StatelessWidget {
 
               const SizedBox(height: 20),
 
-              // === ⚙️ Status Card ===
+              // === ⚙️ Status Card (Realtime GPS dari Firebase) ===
               Container(
                 padding:
                     const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
@@ -114,28 +115,50 @@ class DashboardPage extends StatelessWidget {
                     ),
                   ],
                 ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceAround,
-                  children: [
-                    _statusItem(
-                      icon: LucideIcons.cpu,
-                      label: "Perangkat IoT",
-                      value: "Terhubung",
-                      color: Colors.green,
-                    ),
-                    _statusItem(
-                      icon: LucideIcons.mapPin,
-                      label: "GPS",
-                      value: "Tidak Aktif",
-                      color: Colors.red,
-                    ),
-                    _statusItem(
-                      icon: LucideIcons.battery,
-                      label: "Baterai",
-                      value: "85%",
-                      color: Colors.orange,
-                    ),
-                  ],
+                child: StreamBuilder(
+                  stream: FirebaseDatabase.instance
+                      .ref("vehicle/gps_status")
+                      .onValue,
+                  builder: (context, snapshot) {
+                    // Nilai default
+                    String gpsStatus = "OFF";
+                    Color gpsColor = Colors.red;
+                    String gpsLabel = "Tidak Terhubung";
+
+                    // 🔥 Update data jika ada perubahan
+                    if (snapshot.hasData &&
+                        snapshot.data?.snapshot.value != null) {
+                      gpsStatus = snapshot.data!.snapshot.value.toString();
+                      if (gpsStatus == "ON") {
+                        gpsColor = Colors.green;
+                        gpsLabel = "Terhubung";
+                      }
+                    }
+
+                    return Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceAround,
+                      children: [
+                        _statusItem(
+                          icon: LucideIcons.cpu,
+                          label: "Perangkat IoT",
+                          value: "Terhubung",
+                          color: Colors.green,
+                        ),
+                        _statusItem(
+                          icon: LucideIcons.mapPin,
+                          label: "GPS",
+                          value: gpsLabel,
+                          color: gpsColor,
+                        ),
+                        _statusItem(
+                          icon: LucideIcons.battery,
+                          label: "Baterai",
+                          value: "85%",
+                          color: Colors.orange,
+                        ),
+                      ],
+                    );
+                  },
                 ),
               ),
 

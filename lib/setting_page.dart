@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart';
+import 'package:firebase_database/firebase_database.dart';
 import 'login_page.dart';
 
 class PengaturanPage extends StatefulWidget {
@@ -11,17 +12,47 @@ class PengaturanPage extends StatefulWidget {
 
 class _PengaturanPageState extends State<PengaturanPage> {
   int _selectedTab = 0;
+
+  // Firebase data
+  String? nama;
+  String? email;
+  String? alamat;
+  int? umur;
+
+  // Alarm settings
   bool suara = true;
   bool getar = true;
   bool lokasi = true;
 
   final mainColor = const Color(0xFFBA0403);
 
-  // 🔸 Data yang bisa diedit
-  String namaLengkap = "Steven Hakim";
-  String umur = "40";
-  String kondisi = "Sleep apnea ringan";
-  String kontak = "Stevani - +62 896 2832 1429";
+  @override
+  void initState() {
+    super.initState();
+    _loadUserData();
+  }
+
+  // =====================================================
+  // 🔥 Ambil data dari Firebase Realtime Database
+  // =====================================================
+  Future<void> _loadUserData() async {
+    final ref = FirebaseDatabase.instance.ref("users");
+    final snapshot = await ref.get();
+
+    if (snapshot.exists) {
+      final data = snapshot.value as Map<dynamic, dynamic>;
+      setState(() {
+        nama = data["name"]?.toString();
+        email = data["email"]?.toString();
+        alamat = data["alamat"]?.toString();
+        umur = data["umur"] is int
+            ? data["umur"]
+            : int.tryParse(data["umur"].toString());
+      });
+    } else {
+      debugPrint("❌ Data tidak ditemukan di Firebase");
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -37,10 +68,9 @@ class _PengaturanPageState extends State<PengaturanPage> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
-                  _tabButton(
-                      icon: LucideIcons.user, text: "Profil", index: 0),
-                  _tabButton(
-                      icon: LucideIcons.barChart2, text: "Statistik", index: 1),
+                  _tabButton(icon: LucideIcons.user, text: "Profil", index: 0),
+                  _tabButton(icon: LucideIcons.bell, text: "Alarm", index: 1),
+                  _tabButton(icon: LucideIcons.barChart2, text: "Statistik", index: 2),
                 ],
               ),
             ),
@@ -50,7 +80,9 @@ class _PengaturanPageState extends State<PengaturanPage> {
                 duration: const Duration(milliseconds: 300),
                 child: _selectedTab == 0
                     ? _buildProfilTab()
-                    : _buildStatistikTab(),
+                    : _selectedTab == 1
+                        ? _buildAlarmTab()
+                        : _buildStatistikTab(),
               ),
             ),
 
@@ -60,12 +92,13 @@ class _PengaturanPageState extends State<PengaturanPage> {
               child: ElevatedButton.icon(
                 onPressed: _showLogoutDialog,
                 icon: const Icon(Icons.logout, color: Colors.white),
-                label: const Text("Logout",
-                    style: TextStyle(color: Colors.white, fontSize: 16)),
+                label: const Text(
+                  "Logout",
+                  style: TextStyle(color: Colors.white, fontSize: 16),
+                ),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: mainColor,
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(14),
                   ),
@@ -78,9 +111,9 @@ class _PengaturanPageState extends State<PengaturanPage> {
     );
   }
 
-  // ==============================
+  // =====================================================
   // 🔹 Tab Button UI
-  // ==============================
+  // =====================================================
   Widget _tabButton({
     required IconData icon,
     required String text,
@@ -116,242 +149,139 @@ class _PengaturanPageState extends State<PengaturanPage> {
     );
   }
 
-  // ==============================
-  // 👤 TAB PROFIL
-  // ==============================
+  // =====================================================
+  // 👤 TAB PROFIL — ambil dari Firebase
+  // =====================================================
   Widget _buildProfilTab() {
-    return SingleChildScrollView(
-      key: const ValueKey('profil'),
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        children: [
-          // === Profil Header ===
-          Container(
-            padding: const EdgeInsets.all(18),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(18),
-              boxShadow: [
-                BoxShadow(
-                    color: Colors.black.withOpacity(0.08),
-                    blurRadius: 8,
-                    offset: const Offset(0, 3))
-              ],
-            ),
-            child: Row(
+    return nama == null
+        ? const Center(child: CircularProgressIndicator())
+        : SingleChildScrollView(
+            key: const ValueKey('profil'),
+            padding: const EdgeInsets.all(16),
+            child: Column(
               children: [
-                CircleAvatar(
-                  radius: 38,
-                  backgroundColor: mainColor,
-                  child:
-                      const Icon(LucideIcons.user, color: Colors.white, size: 36),
+                Container(
+                  padding: const EdgeInsets.all(18),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(18),
+                    boxShadow: [
+                      BoxShadow(
+                          color: Colors.black.withOpacity(0.08),
+                          blurRadius: 8,
+                          offset: const Offset(0, 3))
+                    ],
+                  ),
+                  child: Row(
+                    children: [
+                      CircleAvatar(
+                        radius: 38,
+                        backgroundColor: mainColor,
+                        child: const Icon(LucideIcons.user,
+                            color: Colors.white, size: 36),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(nama ?? "-",
+                                style: const TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold)),
+                            const SizedBox(height: 4),
+                            Text(email ?? "-",
+                                style: const TextStyle(color: Colors.grey)),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-                const SizedBox(width: 16),
-                Expanded(
+                const SizedBox(height: 20),
+
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: [
+                      BoxShadow(
+                          color: Colors.black.withOpacity(0.05),
+                          blurRadius: 6,
+                          offset: const Offset(0, 3))
+                    ],
+                  ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(namaLengkap,
-                          style: const TextStyle(
-                              fontSize: 17, fontWeight: FontWeight.bold)),
-                      const Text("ID: 11233445566",
-                          style: TextStyle(color: Colors.grey, fontSize: 13)),
-                      const SizedBox(height: 6),
-                      Row(
-                        children: [
-                          const Text("Skor Keamanan: ",
-                              style: TextStyle(color: Colors.grey, fontSize: 12)),
-                          Expanded(
-                            child: Stack(
-                              children: [
-                                Container(
-                                  height: 8,
-                                  decoration: BoxDecoration(
-                                    color: Colors.grey[300],
-                                    borderRadius: BorderRadius.circular(10),
-                                  ),
-                                ),
-                                Container(
-                                  height: 8,
-                                  width: 120,
-                                  decoration: BoxDecoration(
-                                    color: Colors.green,
-                                    borderRadius: BorderRadius.circular(10),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          const Text("87.5/100",
-                              style: TextStyle(
-                                  color: Colors.green,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 12)),
-                        ],
-                      ),
+                      const Text("Informasi Pengguna",
+                          style: TextStyle(
+                              fontWeight: FontWeight.bold, fontSize: 15)),
+                      const SizedBox(height: 10),
+                      _infoItem("Nama", nama ?? "-"),
+                      _infoItem("Email", email ?? "-"),
+                      _infoItem("Alamat", alamat ?? "-"),
+                      _infoItem("Umur", umur?.toString() ?? "-"),
                     ],
                   ),
                 ),
               ],
             ),
-          ),
-
-          const SizedBox(height: 20),
-
-          // === Informasi Pribadi ===
-          _infoSection("Informasi Pribadi", [
-            _infoItem("Nama Lengkap", namaLengkap, (v) {
-              setState(() => namaLengkap = v);
-            }),
-            _infoItem("Umur", umur, (v) {
-              setState(() => umur = v);
-            }),
-            _infoItem("Kondisi Medis", kondisi, (v) {
-              setState(() => kondisi = v);
-            }),
-            _infoItem("Kontak Darurat", kontak, (v) {
-              setState(() => kontak = v);
-            }),
-          ]),
-
-          const SizedBox(height: 20),
-
-          _preferenceSection(),
-        ],
-      ),
-    );
+          );
   }
 
-  // ==============================
-  // 📋 KOMPONEN INFO SECTION
-  // ==============================
-  Widget _infoSection(String title, List<Widget> children) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-              color: Colors.black.withOpacity(0.05),
-              blurRadius: 6,
-              offset: const Offset(0, 3))
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(title,
-              style:
-                  const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
-          const SizedBox(height: 10),
-          ...children,
-        ],
-      ),
-    );
-  }
-
-  // === ITEM INFO YANG BISA DIEDIT ===
-  Widget _infoItem(String label, String value, Function(String) onUpdate) {
+  Widget _infoItem(String label, String value) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Expanded(
-            child:
-                Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(label,
-                  style: const TextStyle(color: Colors.grey, fontSize: 13)),
-              Text(value,
-                  style:
-                      const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
-            ]),
-          ),
-          GestureDetector(
-            onTap: () => _showEditDialog(label, value, onUpdate),
-            child: Text('Edit',
-                style: TextStyle(
-                    color: mainColor,
-                    fontSize: 13,
-                    fontWeight: FontWeight.bold)),
-          ),
+          Text(label,
+              style: const TextStyle(color: Colors.grey, fontSize: 13)),
+          Text(value,
+              style: const TextStyle(
+                  fontWeight: FontWeight.w600, fontSize: 14)),
         ],
       ),
     );
   }
 
-  // === POP-UP EDIT DIALOG ===
-  void _showEditDialog(
-      String label, String currentValue, Function(String) onSave) {
-    final controller = TextEditingController(text: currentValue);
-
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        title: Text("Edit $label",
-            style: const TextStyle(fontWeight: FontWeight.bold)),
-        content: TextField(
-          controller: controller,
-          decoration: InputDecoration(
-            labelText: label,
-            border:
-                OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child:
-                const Text("Batal", style: TextStyle(color: Colors.grey)),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              onSave(controller.text);
-              Navigator.pop(context);
-            },
-            style: ElevatedButton.styleFrom(backgroundColor: mainColor),
-            child:
-                const Text("Simpan", style: TextStyle(color: Colors.white)),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // ==============================
-  // ⚙️ Preferensi Peringatan
-  // ==============================
-  Widget _preferenceSection() {
-    return Container(
-      width: double.infinity,
+  // =====================================================
+  // 🔔 TAB ALARM SETTING
+  // =====================================================
+  Widget _buildAlarmTab() {
+    return SingleChildScrollView(
+      key: const ValueKey('alarm'),
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-              color: Colors.black.withOpacity(0.05),
-              blurRadius: 6,
-              offset: const Offset(0, 3))
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text("Preferensi Peringatan",
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
-          const SizedBox(height: 10),
-          _switchItem("Suara Peringatan", "Alarm darurat aktif", suara,
-              (v) => setState(() => suara = v)),
-          _switchItem("Getaran", "Aktif saat mengantuk", getar,
-              (v) => setState(() => getar = v)),
-          _switchItem("Pelacakan Lokasi", "Untuk rekomendasi rest area", lokasi,
-              (v) => setState(() => lokasi = v)),
-        ],
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+                color: Colors.black.withOpacity(0.05),
+                blurRadius: 6,
+                offset: const Offset(0, 3))
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text("Pengaturan Alarm",
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+            const SizedBox(height: 10),
+            _switchItem("Suara Peringatan", "Alarm darurat aktif", suara,
+                (v) => setState(() => suara = v)),
+            _switchItem("Getaran", "Aktif saat mengantuk", getar,
+                (v) => setState(() => getar = v)),
+            _switchItem("Pelacakan Lokasi", "Untuk rekomendasi rest area", lokasi,
+                (v) => setState(() => lokasi = v)),
+          ],
+        ),
       ),
     );
   }
@@ -373,8 +303,7 @@ class _PengaturanPageState extends State<PengaturanPage> {
                     style: const TextStyle(
                         fontWeight: FontWeight.w600, fontSize: 14)),
                 Text(subtitle,
-                    style:
-                        const TextStyle(color: Colors.grey, fontSize: 12)),
+                    style: const TextStyle(color: Colors.grey, fontSize: 12)),
               ],
             ),
           ]),
@@ -388,9 +317,9 @@ class _PengaturanPageState extends State<PengaturanPage> {
     );
   }
 
-  // ==============================
+  // =====================================================
   // 📊 TAB STATISTIK
-  // ==============================
+  // =====================================================
   Widget _buildStatistikTab() {
     return SingleChildScrollView(
       key: const ValueKey('statistik'),
@@ -463,16 +392,15 @@ class _PengaturanPageState extends State<PengaturanPage> {
                   fontWeight: FontWeight.bold,
                   color: Colors.black)),
           Text(label,
-              style:
-                  const TextStyle(fontSize: 13, color: Colors.black87)),
+              style: const TextStyle(fontSize: 13, color: Colors.black87)),
         ],
       ),
     );
   }
 
-  // ==============================
+  // =====================================================
   // 🔒 Dialog Logout
-  // ==============================
+  // =====================================================
   void _showLogoutDialog() {
     showDialog(
       context: context,
@@ -484,8 +412,7 @@ class _PengaturanPageState extends State<PengaturanPage> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child:
-                const Text("Batal", style: TextStyle(color: Colors.grey)),
+            child: const Text("Batal", style: TextStyle(color: Colors.grey)),
           ),
           ElevatedButton(
             onPressed: () {
@@ -494,8 +421,8 @@ class _PengaturanPageState extends State<PengaturanPage> {
                   context, MaterialPageRoute(builder: (_) => const LoginPage()));
             },
             style: ElevatedButton.styleFrom(backgroundColor: mainColor),
-            child: const Text("Ya, Logout",
-                style: TextStyle(color: Colors.white)),
+            child:
+                const Text("Ya, Logout", style: TextStyle(color: Colors.white)),
           ),
         ],
       ),
