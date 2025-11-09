@@ -1,16 +1,59 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:firebase_database/firebase_database.dart';
+import 'package:intl/intl.dart';
+import 'package:intl/date_symbol_data_local.dart';
 
-class DashboardPage extends StatelessWidget {
+class DashboardPage extends StatefulWidget {
   final void Function(int)? onTabSelected;
 
   const DashboardPage({super.key, this.onTabSelected});
 
   @override
-  Widget build(BuildContext context) {
-    const mainColor = Color(0xFFBA0403);
+  State<DashboardPage> createState() => _DashboardPageState();
+}
 
+class _DashboardPageState extends State<DashboardPage> {
+  final mainColor = const Color(0xFFBA0403);
+
+  late String currentTime;
+  late String currentDate;
+  Timer? _timer;
+
+  @override
+  void initState() {
+    super.initState();
+    // 🔹 Inisialisasi locale Indonesia
+    initializeDateFormatting('id_ID', null).then((_) {
+      _updateDateTime();
+      _timer =
+          Timer.periodic(const Duration(seconds: 1), (_) => _updateDateTime());
+    }).catchError((_) {
+      _updateDateTime(useFallback: true);
+      _timer = Timer.periodic(
+          const Duration(seconds: 1), (_) => _updateDateTime(useFallback: true));
+    });
+  }
+
+  void _updateDateTime({bool useFallback = false}) {
+    final now = DateTime.now();
+    setState(() {
+      currentTime = DateFormat('HH:mm:ss').format(now);
+      currentDate = useFallback
+          ? DateFormat('d MMMM yyyy').format(now)
+          : DateFormat('d MMMM yyyy', 'id_ID').format(now);
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.grey[100],
       body: SafeArea(
@@ -19,7 +62,7 @@ class DashboardPage extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // === 🌅 Header dengan gradient ===
+              // === 🌅 Header ===
               Container(
                 width: double.infinity,
                 padding:
@@ -42,7 +85,6 @@ class DashboardPage extends StatelessWidget {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    // 👋 Welcome text
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: const [
@@ -57,22 +99,21 @@ class DashboardPage extends StatelessWidget {
                         SizedBox(height: 4),
                         Text(
                           "Pantau kondisi berkendara Anda",
-                          style: TextStyle(color: Colors.white70, fontSize: 13),
+                          style:
+                              TextStyle(color: Colors.white70, fontSize: 13),
                         ),
                       ],
                     ),
-                    // 👤 Avatar interaktif
                     GestureDetector(
                       onTap: () {
-                        if (onTabSelected != null) {
-                          onTabSelected!(3);
+                        if (widget.onTabSelected != null) {
+                          widget.onTabSelected!(3);
                         }
                       },
                       child: CircleAvatar(
                         radius: 24,
                         backgroundColor: Colors.white.withOpacity(0.2),
-                        child:
-                            const Icon(LucideIcons.user, color: Colors.white),
+                        child: const Icon(LucideIcons.user, color: Colors.white),
                       ),
                     ),
                   ],
@@ -81,26 +122,27 @@ class DashboardPage extends StatelessWidget {
 
               const SizedBox(height: 20),
 
-              // === ⏱️ Waktu & Tanggal ===
+              // === 🕒 Waktu & tanggal ===
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: const [
+                children: [
                   Row(
                     children: [
-                      Icon(LucideIcons.clock, size: 16, color: Colors.black54),
-                      SizedBox(width: 6),
-                      Text('14:16:09',
-                          style: TextStyle(color: Colors.black54)),
+                      const Icon(LucideIcons.clock,
+                          size: 16, color: Colors.black54),
+                      const SizedBox(width: 6),
+                      Text(currentTime,
+                          style: const TextStyle(color: Colors.black54)),
                     ],
                   ),
-                  Text('3 November 2025',
-                      style: TextStyle(color: Colors.black54)),
+                  Text(currentDate,
+                      style: const TextStyle(color: Colors.black54)),
                 ],
               ),
 
               const SizedBox(height: 20),
 
-              // === ⚙️ Status Card (Realtime GPS dari Firebase) ===
+              // === ⚙️ Status IoT + GPS + Baterai ===
               Container(
                 padding:
                     const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
@@ -116,23 +158,48 @@ class DashboardPage extends StatelessWidget {
                   ],
                 ),
                 child: StreamBuilder(
-                  stream: FirebaseDatabase.instance
-                      .ref("vehicle/gps_status")
-                      .onValue,
+                  stream: FirebaseDatabase.instance.ref().onValue,
                   builder: (context, snapshot) {
-                    // Nilai default
                     String gpsStatus = "OFF";
-                    Color gpsColor = Colors.red;
-                    String gpsLabel = "Tidak Terhubung";
+                    String iotStatus = "off";
+                    int batteryLevel = 0;
 
-                    // 🔥 Update data jika ada perubahan
                     if (snapshot.hasData &&
                         snapshot.data?.snapshot.value != null) {
-                      gpsStatus = snapshot.data!.snapshot.value.toString();
-                      if (gpsStatus == "ON") {
-                        gpsColor = Colors.green;
-                        gpsLabel = "Terhubung";
+                      final data = snapshot.data!.snapshot.value as Map;
+                      if (data["vehicle"] != null) {
+                        gpsStatus =
+                            data["vehicle"]["gps_status"]?.toString() ?? "OFF";
                       }
+                      if (data["status"] != null) {
+                        iotStatus = data["status"]["iot"]?.toString() ?? "off";
+                        batteryLevel = int.tryParse(
+                                data["status"]["baterai"].toString()) ??
+                            0;
+                      }
+                    }
+
+                    Color gpsColor = gpsStatus.toUpperCase() == "ON"
+                        ? Colors.green
+                        : Colors.red;
+                    String gpsLabel = gpsStatus.toUpperCase() == "ON"
+                        ? "Terhubung"
+                        : "Tidak Terhubung";
+
+                    Color iotColor = iotStatus.toLowerCase() == "on"
+                        ? Colors.green
+                        : Colors.red;
+                    String iotLabel = iotStatus.toLowerCase() == "on"
+                        ? "Terhubung"
+                        : "Tidak Terhubung";
+
+                    Color batteryColor;
+                    if (batteryLevel < 30) {
+                      batteryColor = Colors.red;
+                    } else if (batteryLevel < 70) {
+                      batteryColor = Colors.amber;
+                    } else {
+                      batteryColor = Colors.green;
                     }
 
                     return Row(
@@ -141,8 +208,8 @@ class DashboardPage extends StatelessWidget {
                         _statusItem(
                           icon: LucideIcons.cpu,
                           label: "Perangkat IoT",
-                          value: "Terhubung",
-                          color: Colors.green,
+                          value: iotLabel,
+                          color: iotColor,
                         ),
                         _statusItem(
                           icon: LucideIcons.mapPin,
@@ -153,8 +220,8 @@ class DashboardPage extends StatelessWidget {
                         _statusItem(
                           icon: LucideIcons.battery,
                           label: "Baterai",
-                          value: "85%",
-                          color: Colors.orange,
+                          value: "$batteryLevel%",
+                          color: batteryColor,
                         ),
                       ],
                     );
@@ -164,79 +231,128 @@ class DashboardPage extends StatelessWidget {
 
               const SizedBox(height: 20),
 
-              // === 📊 Statistik Perjalanan ===
-              Container(
-                padding: const EdgeInsets.all(18),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(16),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black12.withOpacity(0.05),
-                      blurRadius: 8,
-                      offset: const Offset(0, 3),
-                    ),
-                  ],
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      "Statistik Perjalanan",
-                      style:
-                          TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
-                    ),
-                    const SizedBox(height: 14),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceAround,
-                      children: [
-                        _infoBox(
-                          icon: LucideIcons.clock,
-                          label: "Durasi Sesi",
-                          value: "00:01:17",
-                          color: mainColor,
-                        ),
-                        _infoBox(
-                          icon: LucideIcons.alertTriangle,
-                          label: "Peringatan",
-                          value: "0",
-                          color: Colors.orange,
+              // === 📊 Statistik Perjalanan (Realtime) ===
+              StreamBuilder(
+                stream: FirebaseDatabase.instance.ref("status").onValue,
+                builder: (context, snapshot) {
+                  String waktu = "00:00:00";
+                  String userStatus = "normal";
+
+                  if (snapshot.hasData &&
+                      snapshot.data?.snapshot.value != null) {
+                    final data = snapshot.data!.snapshot.value as Map;
+                    waktu = data["waktu"]?.toString() ?? "00:00:00";
+                    userStatus = data["user"]?.toString() ?? "normal";
+                  }
+
+                  // Warna dan label status perjalanan
+                  Color statusColor;
+                  String statusLabel;
+                  IconData iconStatus;
+
+                  switch (userStatus.toLowerCase()) {
+                    case "microsleep":
+                      statusColor = Colors.red;
+                      statusLabel = "Deteksi Microsleep";
+                      iconStatus = LucideIcons.alertOctagon;
+                      break;
+                    case "alert":
+                      statusColor = Colors.yellowAccent; // 🟡 lebih terang
+                      statusLabel = "Peringatan";
+                      iconStatus = LucideIcons.alertTriangle;
+                      break;
+                    default:
+                      statusColor = Colors.green;
+                      statusLabel = "Normal";
+                      iconStatus = LucideIcons.checkCircle;
+                  }
+
+                  return Container(
+                    padding: const EdgeInsets.all(18),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black12.withOpacity(0.05),
+                          blurRadius: 8,
+                          offset: const Offset(0, 3),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 20),
-                    Container(
-                      padding: const EdgeInsets.all(14),
-                      decoration: BoxDecoration(
-                        color: Colors.green[50],
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            "Skor Keamanan",
-                            style: TextStyle(fontWeight: FontWeight.w500),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          "Statistik Perjalanan",
+                          style: TextStyle(
+                              fontWeight: FontWeight.w600, fontSize: 16),
+                        ),
+                        const SizedBox(height: 14),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceAround,
+                          children: [
+                            _infoBox(
+                              icon: LucideIcons.clock,
+                              label: "Durasi Sesi",
+                              value: waktu.replaceAll('.', ':'),
+                              color: mainColor,
+                            ),
+                            _infoBox(
+                              icon: iconStatus,
+                              label: statusLabel,
+                              value: userStatus.toUpperCase(),
+                              color: statusColor,
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 20),
+                        Container(
+                          padding: const EdgeInsets.all(14),
+                          decoration: BoxDecoration(
+                            color: Colors.green[50],
+                            borderRadius: BorderRadius.circular(14),
                           ),
-                          const SizedBox(height: 6),
-                          LinearProgressIndicator(
-                            value: 1.0,
-                            color: Colors.green,
-                            backgroundColor: Colors.grey[300],
-                            minHeight: 8,
-                            borderRadius: BorderRadius.circular(10),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                "Skor Keamanan",
+                                style: TextStyle(fontWeight: FontWeight.w500),
+                              ),
+                              const SizedBox(height: 6),
+                              LinearProgressIndicator(
+                                value: userStatus == "microsleep"
+                                    ? 0.3
+                                    : userStatus == "alert"
+                                        ? 0.6
+                                        : 1.0,
+                                color: userStatus == "microsleep"
+                                    ? Colors.red
+                                    : userStatus == "alert"
+                                        ? Colors.yellowAccent // 🟡 progress bar
+                                        : Colors.green,
+                                backgroundColor: Colors.grey[300],
+                                minHeight: 8,
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              const SizedBox(height: 6),
+                              Text(
+                                userStatus == "microsleep"
+                                    ? "Bahaya!"
+                                    : userStatus == "alert"
+                                        ? "Waspada"
+                                        : "Sangat Aman (100%)",
+                                style: TextStyle(
+                                    fontSize: 13, color: statusColor),
+                              ),
+                            ],
                           ),
-                          const SizedBox(height: 6),
-                          const Text(
-                            "Sangat Aman (100%)",
-                            style:
-                                TextStyle(fontSize: 13, color: Colors.green),
-                          ),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
-                  ],
-                ),
+                  );
+                },
               ),
 
               const SizedBox(height: 24),
@@ -288,62 +404,16 @@ class DashboardPage extends StatelessWidget {
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: const [
-                        Text(
-                          "Ringkasan Peringatan Terbaru",
-                          style: TextStyle(
-                              fontWeight: FontWeight.w600, fontSize: 15),
-                        ),
-                        Text(
-                          "Lihat Semua",
-                          style: TextStyle(
-                            color: mainColor,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ],
+                  children: const [
+                    Text(
+                      "Ringkasan Peringatan Terbaru",
+                      style:
+                          TextStyle(fontWeight: FontWeight.w600, fontSize: 15),
                     ),
-                    const SizedBox(height: 12),
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: Colors.red[50],
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: const [
-                          Icon(LucideIcons.alertOctagon,
-                              color: Colors.red, size: 28),
-                          SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  "Deteksi Microsleep",
-                                  style: TextStyle(
-                                    color: Colors.red,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                                SizedBox(height: 4),
-                                Text(
-                                  "Mata tertutup selama 3 detik berturut-turut",
-                                  style: TextStyle(fontSize: 13),
-                                ),
-                              ],
-                            ),
-                          ),
-                          Text(
-                            "17m lalu",
-                            style: TextStyle(fontSize: 12, color: Colors.grey),
-                          ),
-                        ],
-                      ),
+                    SizedBox(height: 12),
+                    Text(
+                      "Belum ada peringatan terbaru.",
+                      style: TextStyle(color: Colors.black54),
                     ),
                   ],
                 ),
@@ -369,8 +439,8 @@ class DashboardPage extends StatelessWidget {
         Text(label, style: const TextStyle(fontSize: 12)),
         Text(
           value,
-          style: TextStyle(
-              fontSize: 13, fontWeight: FontWeight.bold, color: color),
+          style:
+              TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: color),
         ),
       ],
     );
@@ -386,7 +456,7 @@ class DashboardPage extends StatelessWidget {
       width: 130,
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.05),
+        color: color.withOpacity(0.25), // 🔆 agar warna kuning tidak pudar
         borderRadius: BorderRadius.circular(14),
       ),
       child: Column(
@@ -408,6 +478,7 @@ class DashboardPage extends StatelessWidget {
   }
 }
 
+// === Halaman Alarm ===
 class FullscreenMonkeyPage extends StatelessWidget {
   const FullscreenMonkeyPage({super.key});
 
