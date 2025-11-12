@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:firebase_database/firebase_database.dart';
-import 'login_page.dart';
 
 class PengaturanPage extends StatefulWidget {
   const PengaturanPage({super.key});
@@ -13,7 +12,11 @@ class PengaturanPage extends StatefulWidget {
 class _PengaturanPageState extends State<PengaturanPage> {
   int _selectedTab = 0;
 
-  // Firebase data
+  // Firebase references
+  final DatabaseReference userRef = FirebaseDatabase.instance.ref("users");
+  final DatabaseReference alarmRef = FirebaseDatabase.instance.ref("settings/alarm");
+
+  // User data
   String? nama;
   String? email;
   String? alamat;
@@ -30,30 +33,107 @@ class _PengaturanPageState extends State<PengaturanPage> {
   void initState() {
     super.initState();
     _loadUserData();
+    _loadAlarmSettings();
   }
 
   // =====================================================
-  // 🔥 Ambil data dari Firebase Realtime Database
+  // 🔥 Ambil data USER dari Firebase
   // =====================================================
   Future<void> _loadUserData() async {
-    final ref = FirebaseDatabase.instance.ref("users");
-    final snapshot = await ref.get();
-
+    final snapshot = await userRef.get();
     if (snapshot.exists) {
-      final data = snapshot.value as Map<dynamic, dynamic>;
+      final data = Map<String, dynamic>.from(snapshot.value as Map);
       setState(() {
         nama = data["name"]?.toString();
         email = data["email"]?.toString();
         alamat = data["alamat"]?.toString();
-        umur = data["umur"] is int
-            ? data["umur"]
-            : int.tryParse(data["umur"].toString());
+        umur = int.tryParse(data["umur"].toString());
       });
     } else {
-      debugPrint("❌ Data tidak ditemukan di Firebase");
+      debugPrint("❌ Data user tidak ditemukan di Firebase");
     }
   }
 
+  // =====================================================
+  // 🔔 Ambil dan Simpan Setting Alarm
+  // =====================================================
+  Future<void> _loadAlarmSettings() async {
+    final snapshot = await alarmRef.get();
+    if (snapshot.exists) {
+      final data = Map<String, dynamic>.from(snapshot.value as Map);
+      setState(() {
+        suara = data["suara"] ?? true;
+        getar = data["getar"] ?? true;
+        lokasi = data["lokasi"] ?? true;
+      });
+    }
+  }
+
+  Future<void> _updateAlarmSettings() async {
+    await alarmRef.set({
+      "suara": suara,
+      "getar": getar,
+      "lokasi": lokasi,
+    });
+    debugPrint("✅ Pengaturan alarm diperbarui ke Firebase");
+  }
+
+  // =====================================================
+  // ✏️ Simpan perubahan profil ke Firebase
+  // =====================================================
+  Future<void> _updateUserData() async {
+    await userRef.update({
+      "name": nama ?? "-",
+      "email": email ?? "-",
+      "alamat": alamat ?? "-",
+      "umur": umur ?? 0,
+    });
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("✅ Data pengguna berhasil diperbarui")),
+      );
+    }
+  }
+
+  // =====================================================
+  // ✏️ Dialog Edit Data
+  // =====================================================
+  void _showEditDialog(String label, String currentValue, Function(String) onSave) {
+    final controller = TextEditingController(text: currentValue);
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        title: Text("Edit $label"),
+        content: TextField(
+          controller: controller,
+          decoration: InputDecoration(
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+            hintText: "Masukkan $label baru",
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("Batal", style: TextStyle(color: Colors.grey)),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              onSave(controller.text);
+              Navigator.pop(context);
+              _updateUserData();
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: mainColor),
+            child: const Text("Simpan", style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // =====================================================
+  // 🔹 UI
+  // =====================================================
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -85,35 +165,12 @@ class _PengaturanPageState extends State<PengaturanPage> {
                         : _buildStatistikTab(),
               ),
             ),
-
-            // === Logout Button ===
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-              child: ElevatedButton.icon(
-                onPressed: _showLogoutDialog,
-                icon: const Icon(Icons.logout, color: Colors.white),
-                label: const Text(
-                  "Logout",
-                  style: TextStyle(color: Colors.white, fontSize: 16),
-                ),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: mainColor,
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                ),
-              ),
-            ),
           ],
         ),
       ),
     );
   }
 
-  // =====================================================
-  // 🔹 Tab Button UI
-  // =====================================================
   Widget _tabButton({
     required IconData icon,
     required String text,
@@ -150,7 +207,7 @@ class _PengaturanPageState extends State<PengaturanPage> {
   }
 
   // =====================================================
-  // 👤 TAB PROFIL — ambil dari Firebase
+  // 👤 TAB PROFIL
   // =====================================================
   Widget _buildProfilTab() {
     return nama == null
@@ -199,7 +256,6 @@ class _PengaturanPageState extends State<PengaturanPage> {
                   ),
                 ),
                 const SizedBox(height: 20),
-
                 Container(
                   width: double.infinity,
                   padding: const EdgeInsets.all(16),
@@ -220,10 +276,18 @@ class _PengaturanPageState extends State<PengaturanPage> {
                           style: TextStyle(
                               fontWeight: FontWeight.bold, fontSize: 15)),
                       const SizedBox(height: 10),
-                      _infoItem("Nama", nama ?? "-"),
-                      _infoItem("Email", email ?? "-"),
-                      _infoItem("Alamat", alamat ?? "-"),
-                      _infoItem("Umur", umur?.toString() ?? "-"),
+                      _editableInfoItem("Nama", nama ?? "-", (v) {
+                        setState(() => nama = v);
+                      }),
+                      _editableInfoItem("Email", email ?? "-", (v) {
+                        setState(() => email = v);
+                      }),
+                      _editableInfoItem("Alamat", alamat ?? "-", (v) {
+                        setState(() => alamat = v);
+                      }),
+                      _editableInfoItem("Umur", umur?.toString() ?? "-", (v) {
+                        setState(() => umur = int.tryParse(v) ?? 0);
+                      }),
                     ],
                   ),
                 ),
@@ -232,24 +296,33 @@ class _PengaturanPageState extends State<PengaturanPage> {
           );
   }
 
-  Widget _infoItem(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(label,
-              style: const TextStyle(color: Colors.grey, fontSize: 13)),
-          Text(value,
-              style: const TextStyle(
-                  fontWeight: FontWeight.w600, fontSize: 14)),
-        ],
+  Widget _editableInfoItem(String label, String value, Function(String) onEdit) {
+    return InkWell(
+      onTap: () => _showEditDialog(label, value, onEdit),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(label,
+                style: const TextStyle(color: Colors.grey, fontSize: 13)),
+            Row(
+              children: [
+                Text(value,
+                    style: const TextStyle(
+                        fontWeight: FontWeight.w600, fontSize: 14)),
+                const SizedBox(width: 6),
+                const Icon(Icons.edit, size: 16, color: Colors.grey),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
 
   // =====================================================
-  // 🔔 TAB ALARM SETTING
+  // 🔔 TAB ALARM
   // =====================================================
   Widget _buildAlarmTab() {
     return SingleChildScrollView(
@@ -274,12 +347,18 @@ class _PengaturanPageState extends State<PengaturanPage> {
             const Text("Pengaturan Alarm",
                 style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
             const SizedBox(height: 10),
-            _switchItem("Suara Peringatan", "Alarm darurat aktif", suara,
-                (v) => setState(() => suara = v)),
-            _switchItem("Getaran", "Aktif saat mengantuk", getar,
-                (v) => setState(() => getar = v)),
-            _switchItem("Pelacakan Lokasi", "Untuk rekomendasi rest area", lokasi,
-                (v) => setState(() => lokasi = v)),
+            _switchItem("Suara Peringatan", "Alarm darurat aktif", suara, (v) {
+              setState(() => suara = v);
+              _updateAlarmSettings();
+            }),
+            _switchItem("Getaran", "Aktif saat mengantuk", getar, (v) {
+              setState(() => getar = v);
+              _updateAlarmSettings();
+            }),
+            _switchItem("Pelacakan Lokasi", "Untuk rekomendasi rest area", lokasi, (v) {
+              setState(() => lokasi = v);
+              _updateAlarmSettings();
+            }),
           ],
         ),
       ),
@@ -318,7 +397,7 @@ class _PengaturanPageState extends State<PengaturanPage> {
   }
 
   // =====================================================
-  // 📊 TAB STATISTIK
+  // 📊 TAB STATISTIK (dummy)
   // =====================================================
   Widget _buildStatistikTab() {
     return SingleChildScrollView(
@@ -393,37 +472,6 @@ class _PengaturanPageState extends State<PengaturanPage> {
                   color: Colors.black)),
           Text(label,
               style: const TextStyle(fontSize: 13, color: Colors.black87)),
-        ],
-      ),
-    );
-  }
-
-  // =====================================================
-  // 🔒 Dialog Logout
-  // =====================================================
-  void _showLogoutDialog() {
-    showDialog(
-      context: context,
-      builder: (_) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-        title: const Text("Konfirmasi Logout",
-            style: TextStyle(fontWeight: FontWeight.bold)),
-        content: const Text("Apakah Anda yakin ingin keluar dari akun ini?"),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text("Batal", style: TextStyle(color: Colors.grey)),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-              Navigator.pushReplacement(
-                  context, MaterialPageRoute(builder: (_) => const LoginPage()));
-            },
-            style: ElevatedButton.styleFrom(backgroundColor: mainColor),
-            child:
-                const Text("Ya, Logout", style: TextStyle(color: Colors.white)),
-          ),
         ],
       ),
     );

@@ -1,7 +1,7 @@
 plugins {
     id "com.android.application"
     // START: FlutterFire Configuration
-    id "com.google.gms.google-services"
+    id 'com.google.gms.google-services'
     // END: FlutterFire Configuration
     id "kotlin-android"
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
@@ -10,33 +10,35 @@ plugins {
 
 android {
     namespace = "com.example.flutter_application_1"
-    compileSdk = 34               // ✅ versi aman untuk Flutter & Firebase
-    ndkVersion = "27.0.12077973"  // ✅ naikkan ke versi yang diminta plugin
+    compileSdk = flutter.compileSdkVersion
+    ndkVersion = flutter.ndkVersion
 
     compileOptions {
-        // ✅ Ubah Java ke versi 17 untuk hilangkan warning “source value 8 is obsolete”
-        sourceCompatibility JavaVersion.VERSION_17
-        targetCompatibility JavaVersion.VERSION_17
+        sourceCompatibility = JavaVersion.VERSION_1_8
+        targetCompatibility = JavaVersion.VERSION_1_8
         coreLibraryDesugaringEnabled true
     }
 
     kotlinOptions {
-        // ✅ Sesuaikan JVM target dengan Java 17
-        jvmTarget = "17"
+        jvmTarget = JavaVersion.VERSION_1_8
     }
 
     defaultConfig {
-        // TODO: Ganti Application ID sesuai proyekmu
-        applicationId "com.example.flutter_application_1"
-        minSdk = 23              // ✅ versi minimal aman untuk Firebase dan audioplayers
-        targetSdk = 34
+        // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
+        applicationId = "com.example.flutter_application_1"
+        // You can update the following values to match your application needs.
+        // For more information, see: https://flutter.dev/to/review-gradle-config.
+        minSdk = flutter.minSdkVersion
+        targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
     }
 
     buildTypes {
         release {
-            signingConfig = signingConfigs.debug // ganti nanti kalau mau rilis ke Play Store
+            // TODO: Add your own signing config for the release build.
+            // Signing with the debug keys for now, so `flutter run --release` works.
+            signingConfig = signingConfigs.debug
         }
     }
 }
@@ -46,6 +48,6 @@ flutter {
 }
 
 dependencies {
-    // ✅ Untuk flutter_local_notifications dan modern Java APIs
+    // ✅ Tambahan penting untuk flutter_local_notifications
     coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:2.0.4'
 }

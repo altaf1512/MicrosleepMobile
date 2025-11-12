@@ -2,13 +2,20 @@ import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:firebase_database/firebase_database.dart';
 
-class RiwayatPage extends StatelessWidget {
+class RiwayatPage extends StatefulWidget {
   const RiwayatPage({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    const mainColor = Color(0xFFBA0403);
+  State<RiwayatPage> createState() => _RiwayatPageState();
+}
 
+class _RiwayatPageState extends State<RiwayatPage> {
+  final mainColor = const Color(0xFFBA0403);
+  String _searchQuery = "";
+  bool _sortDesc = true; // true = terbaru dulu
+
+  @override
+  Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.grey[100],
       body: SafeArea(
@@ -17,10 +24,9 @@ class RiwayatPage extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // 🔍 Pencarian
+              // 🔍 Pencarian + Urutkan
               Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(14),
@@ -38,8 +44,9 @@ class RiwayatPage extends StatelessWidget {
                     const SizedBox(width: 8),
                     Expanded(
                       child: TextField(
+                        onChanged: (val) => setState(() => _searchQuery = val),
                         decoration: InputDecoration(
-                          hintText: 'Cari berdasarkan lokasi...',
+                          hintText: 'Cari lokasi atau tanggal...',
                           hintStyle: TextStyle(
                             color: Colors.grey[500],
                             fontSize: 14,
@@ -48,18 +55,33 @@ class RiwayatPage extends StatelessWidget {
                         ),
                       ),
                     ),
-                    Container(
-                      decoration: BoxDecoration(
-                        color: Colors.grey[100],
-                        borderRadius: BorderRadius.circular(8),
+                    GestureDetector(
+                      onTap: () {
+                        setState(() => _sortDesc = !_sortDesc);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(_sortDesc
+                                ? "Diurutkan: Terbaru dulu"
+                                : "Diurutkan: Terlama dulu"),
+                            duration: const Duration(seconds: 1),
+                          ),
+                        );
+                      },
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: Colors.grey[100],
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        padding: const EdgeInsets.all(8),
+                        child: Icon(
+                          _sortDesc
+                              ? LucideIcons.arrowDownWideNarrow
+                              : LucideIcons.arrowUpWideNarrow,
+                          color: Colors.black87,
+                          size: 20,
+                        ),
                       ),
-                      padding: const EdgeInsets.all(8),
-                      child: const Icon(
-                        LucideIcons.slidersHorizontal,
-                        color: Colors.black87,
-                        size: 20,
-                      ),
-                    )
+                    ),
                   ],
                 ),
               ),
@@ -89,15 +111,32 @@ class RiwayatPage extends StatelessWidget {
                   final data = Map<String, dynamic>.from(
                       snapshot.data!.snapshot.value as Map);
 
-                  // Ubah ke list & urutkan berdasarkan tanggal/jam (terbaru di atas)
-                  final historyList = data.entries.map((e) {
+                  // Ubah ke list
+                  List<Map<String, dynamic>> historyList = data.entries.map((e) {
                     final item = Map<String, dynamic>.from(e.value);
                     return item;
-                  }).toList()
-                    ..sort((a, b) => b['tanggal']
-                        .toString()
-                        .compareTo(a['tanggal'].toString()));
+                  }).toList();
 
+                  // 🔍 Filter berdasarkan pencarian
+                  if (_searchQuery.isNotEmpty) {
+                    historyList = historyList.where((item) {
+                      final lokasi = (item['lokasi'] ?? '').toString().toLowerCase();
+                      final tanggal = (item['tanggal'] ?? '').toString().toLowerCase();
+                      final query = _searchQuery.toLowerCase();
+                      return lokasi.contains(query) || tanggal.contains(query);
+                    }).toList();
+                  }
+
+                  // 🔃 Urutkan berdasarkan tanggal dan jam
+                  historyList.sort((a, b) {
+                    String dateA = "${a['tanggal'] ?? ''} ${a['jam'] ?? ''}";
+                    String dateB = "${b['tanggal'] ?? ''} ${b['jam'] ?? ''}";
+                    return _sortDesc
+                        ? dateB.compareTo(dateA)
+                        : dateA.compareTo(dateB);
+                  });
+
+                  // 🧾 Tampilkan list
                   return Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: historyList.map((item) {
@@ -184,8 +223,7 @@ class RiwayatPage extends StatelessWidget {
                     const SizedBox(width: 4),
                     Text(
                       tanggal,
-                      style:
-                          const TextStyle(fontSize: 12, color: Colors.grey),
+                      style: const TextStyle(fontSize: 12, color: Colors.grey),
                     ),
                     const SizedBox(width: 10),
                     const Icon(LucideIcons.mapPin,
@@ -194,8 +232,7 @@ class RiwayatPage extends StatelessWidget {
                     Expanded(
                       child: Text(
                         lokasi,
-                        style:
-                            const TextStyle(fontSize: 12, color: Colors.grey),
+                        style: const TextStyle(fontSize: 12, color: Colors.grey),
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
@@ -209,8 +246,7 @@ class RiwayatPage extends StatelessWidget {
                     const SizedBox(width: 4),
                     Text(
                       'Durasi: $durasi',
-                      style:
-                          const TextStyle(fontSize: 12, color: Colors.grey),
+                      style: const TextStyle(fontSize: 12, color: Colors.grey),
                     ),
                     const SizedBox(width: 12),
                     const Icon(LucideIcons.activity,
@@ -218,8 +254,7 @@ class RiwayatPage extends StatelessWidget {
                     const SizedBox(width: 4),
                     Text(
                       'Respons: $respons',
-                      style:
-                          const TextStyle(fontSize: 12, color: Colors.grey),
+                      style: const TextStyle(fontSize: 12, color: Colors.grey),
                     ),
                   ],
                 ),

@@ -21,12 +21,12 @@ dependencies:
   geolocator: ^13.0.1
 
   # 🔔 Notifikasi & Permission
-  flutter_local_notifications: ^17.1.2
+  flutter_local_notifications: ^17.2.2   # ✅ gunakan versi terbaru saja
   permission_handler: ^11.3.0
 
   # ☁️ Firebase
   firebase_core: ^3.5.0
-  firebase_database: ^11.0.0
+  firebase_database: ^11.0.4             # ✅ sinkron dengan firebase_core
 
   # 📊 Date & Format
   intl: ^0.19.0
