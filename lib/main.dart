@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:curved_navigation_bar/curved_navigation_bar.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'firebase_options.dart'; // <-- hasil dari flutterfire configure
+import 'firebase_options.dart';
+import 'services/microsleep_listener.dart';
 
 // Halaman kamu
 import 'splash_screen.dart';
@@ -11,10 +12,12 @@ import 'history_page.dart';
 import 'location_page.dart';
 import 'setting_page.dart';
 
+final GlobalKey<_MainNavigationState> mainNavKey =
+    GlobalKey<_MainNavigationState>();
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // 🔥 Inisialisasi Firebase
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
@@ -41,7 +44,7 @@ class MyApp extends StatelessWidget {
 }
 
 // ==========================
-// 🌊 Curved Navigation Bar (Merah Solid)
+// 🌊 Navigasi Bawah Merah Solid
 // ==========================
 class MainNavigation extends StatefulWidget {
   const MainNavigation({super.key});
@@ -62,8 +65,15 @@ class _MainNavigationState extends State<MainNavigation> {
 
   final GlobalKey<CurvedNavigationBarState> _navKey = GlobalKey();
 
+  void switchToDashboard() {
+    setState(() => _selectedIndex = 0);
+  }
+
   @override
   Widget build(BuildContext context) {
+    // Jalankan listener global agar alarm aktif di semua halaman
+    MicrosleepListener.start(context);
+
     return Scaffold(
       extendBody: true,
       body: _pages[_selectedIndex],
@@ -72,8 +82,8 @@ class _MainNavigationState extends State<MainNavigation> {
         index: _selectedIndex,
         height: 65,
         backgroundColor: Colors.transparent,
-        color: const Color(0xFFB00000), // 🔴 warna merah solid
-        buttonBackgroundColor: const Color(0xFFB00000), // merah juga
+        color: const Color(0xFFB00000),
+        buttonBackgroundColor: const Color(0xFFB00000),
         animationCurve: Curves.easeInOut,
         animationDuration: const Duration(milliseconds: 400),
         items: const [

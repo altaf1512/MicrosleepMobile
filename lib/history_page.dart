@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart';
+import 'package:firebase_database/firebase_database.dart';
 
 class RiwayatPage extends StatelessWidget {
   const RiwayatPage({super.key});
@@ -16,12 +17,12 @@ class RiwayatPage extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // 🔍 Kolom pencarian (PUTIH)
+              // 🔍 Pencarian
               Container(
                 padding:
                     const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 decoration: BoxDecoration(
-                  color: Colors.white, // ✅ putih polos
+                  color: Colors.white,
                   borderRadius: BorderRadius.circular(14),
                   boxShadow: [
                     BoxShadow(
@@ -65,79 +66,57 @@ class RiwayatPage extends StatelessWidget {
 
               const SizedBox(height: 24),
 
-              // === Bagian November 2025 ===
-              _monthHeader('November 2025', mainColor),
-              _microsleepCard(
-                mainColor: mainColor,
-                waktu: '14:30',
-                tanggal: '23/11/2025',
-                lokasi: 'Jl. Tol Jakarta–Cikampek',
-                durasi: '3.2s',
-                respons: '1.8s',
-              ),
-              _microsleepCard(
-                mainColor: mainColor,
-                waktu: '14:05',
-                tanggal: '23/11/2025',
-                lokasi: 'Jl. Tol Cipali KM 117',
-                durasi: '2.7s',
-                respons: '2.1s',
-              ),
+              // 🔥 StreamBuilder Firebase
+              StreamBuilder(
+                stream: FirebaseDatabase.instance
+                    .ref('microsleep_history')
+                    .onValue,
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
 
-              const SizedBox(height: 20),
+                  if (!snapshot.hasData ||
+                      snapshot.data?.snapshot.value == null) {
+                    return const Center(
+                      child: Text(
+                        "Belum ada riwayat microsleep.",
+                        style: TextStyle(color: Colors.grey),
+                      ),
+                    );
+                  }
 
-              // === Bagian Oktober 2025 ===
-              _monthHeader('Oktober 2025', mainColor),
-              _microsleepCard(
-                mainColor: mainColor,
-                waktu: '05:25',
-                tanggal: '12/10/2025',
-                lokasi: 'Jl. Tol Surabaya–Probolinggo',
-                durasi: '3.8s',
-                respons: '2.0s',
-              ),
-              _microsleepCard(
-                mainColor: mainColor,
-                waktu: '22:10',
-                tanggal: '02/10/2025',
-                lokasi: 'Jl. Raya Banyuwangi–Situbondo',
-                durasi: '3.1s',
-                respons: '1.6s',
+                  final data = Map<String, dynamic>.from(
+                      snapshot.data!.snapshot.value as Map);
+
+                  // Ubah ke list & urutkan berdasarkan tanggal/jam (terbaru di atas)
+                  final historyList = data.entries.map((e) {
+                    final item = Map<String, dynamic>.from(e.value);
+                    return item;
+                  }).toList()
+                    ..sort((a, b) => b['tanggal']
+                        .toString()
+                        .compareTo(a['tanggal'].toString()));
+
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: historyList.map((item) {
+                      return _microsleepCard(
+                        mainColor: mainColor,
+                        waktu: item['jam'] ?? '-',
+                        tanggal: item['tanggal'] ?? '-',
+                        lokasi: item['lokasi'] ?? '-',
+                        durasi: "${item['durasi']}s",
+                        respons: "${item['respons']}s",
+                      );
+                    }).toList(),
+                  );
+                },
               ),
             ],
           ),
         ),
       ),
-    );
-  }
-
-  // === Header Bulan ===
-  Widget _monthHeader(String bulan, Color mainColor) {
-    return Row(
-      children: [
-        Expanded(
-          child: Divider(
-            color: mainColor.withOpacity(0.3),
-            thickness: 1,
-            endIndent: 8,
-          ),
-        ),
-        Text(
-          bulan,
-          style: TextStyle(
-            color: mainColor,
-            fontWeight: FontWeight.bold,
-            fontSize: 15,
-          ),
-        ),
-        Expanded(
-          child: Divider(
-            color: mainColor.withOpacity(0.3),
-            thickness: 1,
-            indent: 8,
-          ),
-        ),
-      ],
     );
   }
 
@@ -200,19 +179,23 @@ class RiwayatPage extends StatelessWidget {
                 const SizedBox(height: 6),
                 Row(
                   children: [
-                    const Icon(LucideIcons.calendar, size: 14, color: Colors.grey),
+                    const Icon(LucideIcons.calendar,
+                        size: 14, color: Colors.grey),
                     const SizedBox(width: 4),
                     Text(
                       tanggal,
-                      style: const TextStyle(fontSize: 12, color: Colors.grey),
+                      style:
+                          const TextStyle(fontSize: 12, color: Colors.grey),
                     ),
                     const SizedBox(width: 10),
-                    const Icon(LucideIcons.mapPin, size: 14, color: Colors.grey),
+                    const Icon(LucideIcons.mapPin,
+                        size: 14, color: Colors.grey),
                     const SizedBox(width: 4),
                     Expanded(
                       child: Text(
                         lokasi,
-                        style: const TextStyle(fontSize: 12, color: Colors.grey),
+                        style:
+                            const TextStyle(fontSize: 12, color: Colors.grey),
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
@@ -221,18 +204,22 @@ class RiwayatPage extends StatelessWidget {
                 const SizedBox(height: 6),
                 Row(
                   children: [
-                    const Icon(LucideIcons.clock, size: 14, color: Colors.grey),
+                    const Icon(LucideIcons.clock,
+                        size: 14, color: Colors.grey),
                     const SizedBox(width: 4),
                     Text(
                       'Durasi: $durasi',
-                      style: const TextStyle(fontSize: 12, color: Colors.grey),
+                      style:
+                          const TextStyle(fontSize: 12, color: Colors.grey),
                     ),
                     const SizedBox(width: 12),
-                    const Icon(LucideIcons.activity, size: 14, color: Colors.grey),
+                    const Icon(LucideIcons.activity,
+                        size: 14, color: Colors.grey),
                     const SizedBox(width: 4),
                     Text(
                       'Respons: $respons',
-                      style: const TextStyle(fontSize: 12, color: Colors.grey),
+                      style:
+                          const TextStyle(fontSize: 12, color: Colors.grey),
                     ),
                   ],
                 ),
