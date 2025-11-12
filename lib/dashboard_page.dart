@@ -4,6 +4,8 @@ import 'package:lucide_icons/lucide_icons.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:intl/intl.dart';
 import 'package:intl/date_symbol_data_local.dart';
+import 'package:audioplayers/audioplayers.dart' as ap;
+
 
 class DashboardPage extends StatefulWidget {
   final void Function(int)? onTabSelected;
@@ -16,6 +18,9 @@ class DashboardPage extends StatefulWidget {
 
 class _DashboardPageState extends State<DashboardPage> {
   final mainColor = const Color(0xFFBA0403);
+  final ap.AudioPlayer _player = ap.AudioPlayer();
+
+  bool _isAlarmPlaying = false;
 
   late String currentTime;
   late String currentDate;
@@ -24,15 +29,42 @@ class _DashboardPageState extends State<DashboardPage> {
   @override
   void initState() {
     super.initState();
-    // 🔹 Inisialisasi locale Indonesia
+
+    // 🔹 Update waktu real-time
     initializeDateFormatting('id_ID', null).then((_) {
       _updateDateTime();
-      _timer =
-          Timer.periodic(const Duration(seconds: 1), (_) => _updateDateTime());
-    }).catchError((_) {
-      _updateDateTime(useFallback: true);
       _timer = Timer.periodic(
-          const Duration(seconds: 1), (_) => _updateDateTime(useFallback: true));
+        const Duration(seconds: 1),
+        (_) => _updateDateTime(),
+      );
+    });
+
+    // 🔥 Pantau perubahan status user dari Firebase
+    FirebaseDatabase.instance.ref('status/user').onValue.listen((event) async {
+      if (!mounted) return;
+      final value = event.snapshot.value?.toString() ?? 'normal';
+
+      if (value.toLowerCase() == 'microsleep' && !_isAlarmPlaying) {
+        _isAlarmPlaying = true;
+
+        // 🔊 Mainkan alarm berulang
+        await _player.setReleaseMode(ap.ReleaseMode.loop);
+        await _player.play(ap.AssetSource('sound/alarm.wav'));
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text("⚠️ Deteksi Microsleep! Alarm menyala."),
+              backgroundColor: Colors.red,
+              duration: Duration(seconds: 3),
+            ),
+          );
+        }
+      } else if (value.toLowerCase() != 'microsleep' && _isAlarmPlaying) {
+        // 🔇 Hentikan alarm
+        await _player.stop();
+        _isAlarmPlaying = false;
+      }
     });
   }
 
@@ -49,6 +81,7 @@ class _DashboardPageState extends State<DashboardPage> {
   @override
   void dispose() {
     _timer?.cancel();
+    _player.dispose();
     super.dispose();
   }
 
@@ -245,7 +278,6 @@ class _DashboardPageState extends State<DashboardPage> {
                     userStatus = data["user"]?.toString() ?? "normal";
                   }
 
-                  // Warna dan label status perjalanan
                   Color statusColor;
                   String statusLabel;
                   IconData iconStatus;
@@ -257,7 +289,7 @@ class _DashboardPageState extends State<DashboardPage> {
                       iconStatus = LucideIcons.alertOctagon;
                       break;
                     case "alert":
-                      statusColor = Colors.yellowAccent; // 🟡 lebih terang
+                      statusColor = Colors.orange;
                       statusLabel = "Peringatan";
                       iconStatus = LucideIcons.alertTriangle;
                       break;
@@ -330,7 +362,7 @@ class _DashboardPageState extends State<DashboardPage> {
                                 color: userStatus == "microsleep"
                                     ? Colors.red
                                     : userStatus == "alert"
-                                        ? Colors.yellowAccent // 🟡 progress bar
+                                        ? Colors.orange
                                         : Colors.green,
                                 backgroundColor: Colors.grey[300],
                                 minHeight: 8,
@@ -357,17 +389,28 @@ class _DashboardPageState extends State<DashboardPage> {
 
               const SizedBox(height: 24),
 
-              // === 🚨 Tombol Alarm ===
+              // === 🚨 Tombol Matikan Alarm ===
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton.icon(
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => const FullscreenMonkeyPage(),
-                      ),
-                    );
+                  onPressed: () async {
+                    final userRef =
+                        FirebaseDatabase.instance.ref("status/user");
+                    final snapshot = await userRef.get();
+
+                    if (snapshot.exists && snapshot.value == "microsleep") {
+                      await userRef.set("normal");
+                      await _player.stop();
+                      _isAlarmPlaying = false;
+
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content:
+                              Text("Alarm dimatikan — status kembali normal."),
+                          backgroundColor: Colors.green,
+                        ),
+                      );
+                    }
                   },
                   icon: const Icon(LucideIcons.bellRing, color: Colors.white),
                   label: const Text(
@@ -383,39 +426,6 @@ class _DashboardPageState extends State<DashboardPage> {
                     elevation: 5,
                     shadowColor: mainColor.withOpacity(0.5),
                   ),
-                ),
-              ),
-
-              const SizedBox(height: 24),
-
-              // === 🔔 Ringkasan Peringatan ===
-              Container(
-                padding: const EdgeInsets.all(18),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(16),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black12.withOpacity(0.05),
-                      blurRadius: 8,
-                      offset: const Offset(0, 3),
-                    ),
-                  ],
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: const [
-                    Text(
-                      "Ringkasan Peringatan Terbaru",
-                      style:
-                          TextStyle(fontWeight: FontWeight.w600, fontSize: 15),
-                    ),
-                    SizedBox(height: 12),
-                    Text(
-                      "Belum ada peringatan terbaru.",
-                      style: TextStyle(color: Colors.black54),
-                    ),
-                  ],
                 ),
               ),
             ],
@@ -456,7 +466,7 @@ class _DashboardPageState extends State<DashboardPage> {
       width: 130,
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.25), // 🔆 agar warna kuning tidak pudar
+        color: color.withOpacity(0.25),
         borderRadius: BorderRadius.circular(14),
       ),
       child: Column(
@@ -473,39 +483,6 @@ class _DashboardPageState extends State<DashboardPage> {
           ),
           Text(label, style: const TextStyle(fontSize: 12)),
         ],
-      ),
-    );
-  }
-}
-
-// === Halaman Alarm ===
-class FullscreenMonkeyPage extends StatelessWidget {
-  const FullscreenMonkeyPage({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      body: GestureDetector(
-        onTap: () => Navigator.pop(context),
-        child: Stack(
-          fit: StackFit.expand,
-          children: [
-            Image.asset("assets/monyet.jpeg", fit: BoxFit.cover),
-            Container(
-              color: Colors.black45,
-              alignment: Alignment.center,
-              child: const Text(
-                "Microsleep Alert!",
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 30,
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: 1.2,
-                ),
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }

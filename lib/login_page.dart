@@ -31,7 +31,7 @@ class _LoginPageState extends State<LoginPage> {
 
     await Future.delayed(const Duration(seconds: 2)); // simulasi loading
 
-    if (email == "admin@gmail.com" && password == "123456") {
+    if (email == "halo@gmail.com" && password == "123456") {
       // 🎉 tampilkan animasi sukses
       showDialog(
         context: context,

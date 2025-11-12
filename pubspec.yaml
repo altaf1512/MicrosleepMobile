@@ -1,6 +1,6 @@
-name: flutter_application_1
-description: "A new Flutter project."
-publish_to: 'none' # Remove this line if you wish to publish to pub.dev
+name: microsleep_mobile
+description: "Microsleep Guard — Sistem deteksi microsleep berbasis IoT dan Deep Learning."
+publish_to: 'none'
 
 version: 1.0.0+1
 
@@ -11,24 +11,36 @@ dependencies:
   flutter:
     sdk: flutter
 
+  # 📱 UI & Icon
   cupertino_icons: ^1.0.8
   lucide_icons: ^0.257.0
-  google_maps_flutter: ^2.12.3
   curved_navigation_bar: ^1.0.3
+
+  # 🌍 Maps & Lokasi
+  google_maps_flutter: ^2.12.3
   geolocator: ^13.0.1
+
+  # 🔔 Notifikasi & Permission
   flutter_local_notifications: ^17.1.2
   permission_handler: ^11.3.0
+
+  # ☁️ Firebase
   firebase_core: ^3.5.0
   firebase_database: ^11.0.0
+
+  # 📊 Date & Format
   intl: ^0.19.0
-  
+
+  # 🔊 Audio Player
+  audioplayers: ^6.0.0
+
+  # 🎞️ Animasi (Lottie JSON)
+  lottie: ^3.1.0
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^5.0.0
-  lottie: ^3.1.0
-
 
 flutter:
   uses-material-design: true
@@ -41,7 +53,4 @@ flutter:
     - assets/animation/sign in red.json
     - assets/animation/red 1.json
     - assets/animation/Black Check.json
-
-
-
-
+    - assets/sound/alarm.wav
