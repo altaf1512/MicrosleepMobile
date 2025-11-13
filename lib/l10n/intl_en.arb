@@ -31,6 +31,11 @@
   "address": "Address",
   "age": "Age",
 
+  "profile_name": "Name",
+  "profile_email": "Email",
+  "profile_address": "Address",
+  "profile_age": "Age",
+
   "save": "Save",
   "cancel": "Cancel",
 
@@ -53,5 +58,71 @@
 
   "english": "English",
   "indonesian": "Indonesian",
-  "chooseLanguage": "Choose Language"
+  "chooseLanguage": "Choose Language",
+
+  "location_search_hint": "Search rest area...",
+  "location_tab_map": "Map",
+  "location_tab_list": "List",
+  "location_alarm_test": "Test Alarm",
+  "location_alarm_title": "Test Alarm",
+  "location_alarm_body": "Manual alarm successfully triggered.",
+  "location_waiting_data": "Waiting for location data...",
+  "location_panel_title": "Your Location",
+  "location_latitude": "Latitude",
+  "location_longitude": "Longitude",
+  "location_speed": "Speed",
+  "location_last_update": "Last update",
+
+  "restarea_1": "Rest Area Jember 1",
+  "restarea_2": "Rest Area Jember 2",
+  "restarea_type": "Highway Rest Area",
+  "restarea_24hours": "24 Hours",
+
+  "facility_toilet": "Toilet",
+  "facility_food": "Food",
+  "facility_parking": "Parking",
+  "facility_fuel": "Fuel",
+  "facility_atm": "ATM",
+
+  "history_search_hint": "Search location or date...",
+  "history_no_data": "No microsleep history.",
+  "history_title": "Microsleep Detection",
+  "history_detail_info": "Eyes closed for 3 consecutive seconds",
+  "history_date": "Date",
+  "history_location": "Location",
+  "history_duration": "Duration",
+  "history_response": "Response Time",
+
+  "profile": "Profile",
+  "alarm": "Alarm",
+  "statistics": "Statistics",
+
+  "profile_edit_success": "Profile updated successfully",
+
+  "edit_title": "Edit",
+  "edit_cancel": "Cancel",
+  "edit_save": "Save",
+
+  "settings_tab_profile": "Profile",
+  "settings_tab_alarm": "Alarm",
+  "settings_tab_stats": "Statistics",
+
+  "alarm_sound": "Warning Sound",
+  "alarm_sound_desc": "Emergency alarm active",
+
+  "alarm_vibration": "Vibration",
+  "alarm_vibration_desc": "Active during microsleep",
+
+  "alarm_tracking": "Location Tracking",
+  "alarm_tracking_desc": "Used for rest area recommendation",
+
+  "stats_title": "Driving Statistics",
+  "stats_subtitle": "Monitor your safety progress",
+
+  "stats_total_monitoring": "Total Monitoring Hours",
+  "stats_safe_days": "Safe Days",
+  "stats_total_incidents": "Total Incidents",
+  "stats_monthly_improvement": "Improvement This Month",
+
+  "stats_total_hours": "Total Monitoring Hours"
 }

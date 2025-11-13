@@ -31,6 +31,11 @@
   "address": "Alamat",
   "age": "Umur",
 
+  "profile_name": "Nama",
+  "profile_email": "Email",
+  "profile_address": "Alamat",
+  "profile_age": "Umur",
+
   "save": "Simpan",
   "cancel": "Batal",
 
@@ -53,5 +58,71 @@
 
   "english": "Bahasa Inggris",
   "indonesian": "Bahasa Indonesia",
-  "chooseLanguage": "Pilih Bahasa"
+  "chooseLanguage": "Pilih Bahasa",
+
+  "location_search_hint": "Cari rest area...",
+  "location_tab_map": "Peta",
+  "location_tab_list": "Daftar",
+  "location_alarm_test": "Tes Alarm",
+  "location_alarm_title": "Tes Alarm",
+  "location_alarm_body": "Alarm manual berhasil dijalankan.",
+  "location_waiting_data": "Menunggu data lokasi dari Firebase...",
+  "location_panel_title": "Lokasi Anda",
+  "location_latitude": "Lintang",
+  "location_longitude": "Bujur",
+  "location_speed": "Kecepatan",
+  "location_last_update": "Terakhir diperbarui",
+
+  "restarea_1": "Rest Area Jember 1",
+  "restarea_2": "Rest Area Jember 2",
+  "restarea_type": "Rest Area Tol",
+  "restarea_24hours": "24 Jam",
+
+  "facility_toilet": "Toilet",
+  "facility_food": "Makanan",
+  "facility_parking": "Parkir",
+  "facility_fuel": "BBM",
+  "facility_atm": "ATM",
+
+  "history_search_hint": "Cari lokasi atau tanggal...",
+  "history_no_data": "Belum ada riwayat microsleep.",
+  "history_title": "Deteksi Microsleep",
+  "history_detail_info": "Mata tertutup selama 3 detik berturut-turut",
+  "history_date": "Tanggal",
+  "history_location": "Lokasi",
+  "history_duration": "Durasi",
+  "history_response": "Respons",
+
+  "profile": "Profil",
+  "alarm": "Alarm",
+  "statistics": "Statistik",
+
+  "profile_edit_success": "Data berhasil diperbarui",
+
+  "edit_title": "Edit",
+  "edit_cancel": "Batal",
+  "edit_save": "Simpan",
+
+  "settings_tab_profile": "Profil",
+  "settings_tab_alarm": "Alarm",
+  "settings_tab_stats": "Statistik",
+
+  "alarm_sound": "Suara Peringatan",
+  "alarm_sound_desc": "Alarm darurat aktif",
+
+  "alarm_vibration": "Getaran",
+  "alarm_vibration_desc": "Aktif saat microsleep",
+
+  "alarm_tracking": "Pelacakan Lokasi",
+  "alarm_tracking_desc": "Untuk rekomendasi rest area",
+
+  "stats_title": "Statistik Berkendara",
+  "stats_subtitle": "Pantau kemajuan keamanan Anda",
+
+  "stats_total_monitoring": "Total Jam Monitoring",
+  "stats_safe_days": "Hari Aman",
+  "stats_total_incidents": "Total Insiden",
+  "stats_monthly_improvement": "Peningkatan Bulan Ini",
+
+  "stats_total_hours": "Total Jam Monitoring"
 }

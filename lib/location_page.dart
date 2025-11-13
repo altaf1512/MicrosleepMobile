@@ -6,6 +6,8 @@ import 'package:lucide_icons/lucide_icons.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:firebase_database/firebase_database.dart';
 
+import 'l10n/generated/l10n.dart';
+
 class LokasiPage extends StatefulWidget {
   const LokasiPage({super.key});
 
@@ -17,35 +19,29 @@ class _LokasiPageState extends State<LokasiPage> {
   GoogleMapController? mapController;
   final LatLng _defaultCenter = const LatLng(-8.1726, 113.6995);
 
-  // Firebase reference
   final DatabaseReference _vehicleRef =
       FirebaseDatabase.instance.ref('vehicle');
 
   LatLng? _firebaseVehiclePosition;
   double _firebaseSpeed = 0.0;
-
-  // Waktu update terakhir
   String? _lastUpdateTime;
 
-  // Warna utama
   final mainColor = const Color(0xFFBA0403);
-  final secondaryColor = const Color(0xFFE34234);
-
   bool _isMapView = true;
 
-  // Data Rest Area
+  // Rest Area (tanpa translate dinamis)
   final List<Map<String, String>> _restAreas = [
     {
-      "name": "Rest Area Jember 1",
-      "type": "Rest Area Tol",
-      "distance": "2.5 km",
-      "image": "https://images.unsplash.com/photo-1689181482780-a6fe3c7b137f",
+      "name": "restarea_1",
+      "type": "restarea_type",
+      "image":
+          "https://images.unsplash.com/photo-1689181482780-a6fe3c7b137f",
     },
     {
-      "name": "Rest Area Jember 2",
-      "type": "Rest Area Tol",
-      "distance": "5 km",
-      "image": "https://images.unsplash.com/photo-1638270387990-32897e903002",
+      "name": "restarea_2",
+      "type": "restarea_type",
+      "image":
+          "https://images.unsplash.com/photo-1638270387990-32897e903002",
     },
   ];
 
@@ -65,7 +61,6 @@ class _LokasiPageState extends State<LokasiPage> {
     await _notifications.initialize(settings);
   }
 
-  // 🔔 Tes Alarm
   Future<void> _triggerAlarm(String title, String body) async {
     const androidDetails = AndroidNotificationDetails(
       'alarm_channel',
@@ -79,7 +74,6 @@ class _LokasiPageState extends State<LokasiPage> {
     await _notifications.show(0, title, body, details);
   }
 
-  // 🛰️ Ambil data lokasi dari Firebase
   void _listenToFirebaseVehicle() {
     _vehicleRef.onValue.listen((event) {
       final data = event.snapshot.value as Map?;
@@ -87,23 +81,21 @@ class _LokasiPageState extends State<LokasiPage> {
         final lat = (data['latitude'] ?? 0.0) as double;
         final lon = (data['longitude'] ?? 0.0) as double;
         final spd = (data['speed'] ?? 0.0) as double;
-        final newPos = LatLng(lat, lon);
 
         final now = DateTime.now();
-        final formattedTime =
+        final formatted =
             "${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}:${now.second.toString().padLeft(2, '0')}";
 
         setState(() {
-          _firebaseVehiclePosition = newPos;
+          _firebaseVehiclePosition = LatLng(lat, lon);
           _firebaseSpeed = spd;
-          _lastUpdateTime = formattedTime;
+          _lastUpdateTime = formatted;
         });
 
-        // Auto center kamera
         if (mapController != null) {
           mapController!.animateCamera(
             CameraUpdate.newCameraPosition(
-              CameraPosition(target: newPos, zoom: 16),
+              CameraPosition(target: LatLng(lat, lon), zoom: 16),
             ),
           );
         }
@@ -115,30 +107,36 @@ class _LokasiPageState extends State<LokasiPage> {
     mapController = controller;
   }
 
-  // ====================== UI ======================
   @override
   Widget build(BuildContext context) {
+    final loc = S.of(context);
+
     return Scaffold(
       backgroundColor: Colors.grey[100],
       body: SafeArea(
         child: Column(
           children: [
-            _buildSearchBar(),
-            _buildToggleButtons(),
+            _buildSearchBar(loc),
+            _buildToggleButtons(loc),
             const SizedBox(height: 12),
             Expanded(
               child: AnimatedSwitcher(
                 duration: const Duration(milliseconds: 400),
-                child: _isMapView ? _buildMapView() : _buildListView(),
+                child: _isMapView ? _buildMapView(loc) : _buildListView(loc),
               ),
             ),
             Padding(
               padding: const EdgeInsets.all(12),
               child: ElevatedButton.icon(
-                onPressed: () =>
-                    _triggerAlarm("🔔 Tes Alarm", "Alarm manual berhasil dijalankan."),
+                onPressed: () => _triggerAlarm(
+                  loc.location_alarm_title,
+                  loc.location_alarm_body,
+                ),
                 icon: const Icon(Icons.alarm, color: Colors.white),
-                label: const Text("Tes Alarm"),
+                label: Text(
+                  loc.location_alarm_test,
+                  style: const TextStyle(color: Colors.white),
+                ),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: mainColor,
                   padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
@@ -154,8 +152,8 @@ class _LokasiPageState extends State<LokasiPage> {
     );
   }
 
-  // 🔍 Search bar
-  Widget _buildSearchBar() {
+  // 🔍 Search Bar
+  Widget _buildSearchBar(S loc) {
     return Padding(
       padding: const EdgeInsets.all(16),
       child: Container(
@@ -178,7 +176,7 @@ class _LokasiPageState extends State<LokasiPage> {
             Expanded(
               child: TextField(
                 decoration: InputDecoration(
-                  hintText: 'Cari rest area...',
+                  hintText: loc.location_search_hint,
                   border: InputBorder.none,
                   hintStyle: TextStyle(color: Colors.grey[500], fontSize: 14),
                 ),
@@ -191,8 +189,7 @@ class _LokasiPageState extends State<LokasiPage> {
     );
   }
 
-  // 🔁 Tombol Toggle (Peta / Daftar)
-  Widget _buildToggleButtons() {
+  Widget _buildToggleButtons(S loc) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Row(
@@ -205,14 +202,14 @@ class _LokasiPageState extends State<LokasiPage> {
                 color: _isMapView ? Colors.white : mainColor,
               ),
               label: Text(
-                'Peta',
+                loc.location_tab_map,
                 style: TextStyle(color: _isMapView ? Colors.white : mainColor),
               ),
               style: ElevatedButton.styleFrom(
                 backgroundColor: _isMapView ? mainColor : Colors.white,
+                side: BorderSide(color: mainColor),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
-                  side: BorderSide(color: mainColor),
                 ),
                 padding: const EdgeInsets.symmetric(vertical: 10),
               ),
@@ -227,14 +224,14 @@ class _LokasiPageState extends State<LokasiPage> {
                 color: !_isMapView ? Colors.white : mainColor,
               ),
               label: Text(
-                'Daftar',
+                loc.location_tab_list,
                 style: TextStyle(color: !_isMapView ? Colors.white : mainColor),
               ),
               style: ElevatedButton.styleFrom(
                 backgroundColor: !_isMapView ? mainColor : Colors.white,
+                side: BorderSide(color: mainColor),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
-                  side: BorderSide(color: mainColor),
                 ),
                 padding: const EdgeInsets.symmetric(vertical: 10),
               ),
@@ -245,41 +242,29 @@ class _LokasiPageState extends State<LokasiPage> {
     );
   }
 
-  // 🗺️ Map View + Panel Informasi
-  Widget _buildMapView() {
+  // 🗺️ Map View
+  Widget _buildMapView(S loc) {
     return Stack(
       children: [
         kIsWeb
-            ? const Center(child: Text("🌍 Peta hanya tampil di Android/iOS"))
+            ? Center(child: Text("Web not supported"))
             : GoogleMap(
                 onMapCreated: _onMapCreated,
                 initialCameraPosition:
                     CameraPosition(target: _defaultCenter, zoom: 14),
                 zoomControlsEnabled: true,
-                myLocationEnabled: false,
                 markers: {
                   if (_firebaseVehiclePosition != null)
                     Marker(
                       markerId: const MarkerId('lokasiAnda'),
                       position: _firebaseVehiclePosition!,
-                      infoWindow: const InfoWindow(title: 'Lokasi Anda'),
                       icon: BitmapDescriptor.defaultMarkerWithHue(
                           BitmapDescriptor.hueBlue),
                     ),
-                  const Marker(
-                    markerId: MarkerId('rest1'),
-                    position: LatLng(-8.1726, 113.6995),
-                    infoWindow: InfoWindow(title: 'Rest Area Jember 1'),
-                  ),
-                  const Marker(
-                    markerId: MarkerId('rest2'),
-                    position: LatLng(-8.1689, 113.7150),
-                    infoWindow: InfoWindow(title: 'Rest Area Jember 2'),
-                  ),
                 },
               ),
 
-        // 📊 Overlay Info Panel
+        // Info Panel
         Positioned(
           top: 12,
           left: 12,
@@ -298,39 +283,27 @@ class _LokasiPageState extends State<LokasiPage> {
               ],
             ),
             child: _firebaseVehiclePosition == null
-                ? const Center(
-                    child: Text(
-                      "Menunggu data lokasi dari Firebase...",
-                      style: TextStyle(color: Colors.grey),
-                    ),
+                ? Text(
+                    loc.location_waiting_data,
+                    style: const TextStyle(color: Colors.grey),
                   )
                 : Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
-                        "🌍 Lokasi Anda",
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 15,
-                          color: Colors.black87,
-                        ),
+                      Text(
+                        "🌍 ${loc.location_panel_title}",
+                        style: const TextStyle(
+                            fontWeight: FontWeight.bold, fontSize: 15),
                       ),
                       const SizedBox(height: 6),
                       Text(
-                        "Latitude  : ${_firebaseVehiclePosition!.latitude.toStringAsFixed(6)}",
-                        style: const TextStyle(color: Colors.black87),
-                      ),
+                          "${loc.location_latitude}: ${_firebaseVehiclePosition!.latitude.toStringAsFixed(6)}"),
                       Text(
-                        "Longitude : ${_firebaseVehiclePosition!.longitude.toStringAsFixed(6)}",
-                        style: const TextStyle(color: Colors.black87),
-                      ),
-                      Text(
-                        "Kecepatan : ${_firebaseSpeed.toStringAsFixed(1)} km/h",
-                        style: const TextStyle(color: Colors.black87),
-                      ),
+                          "${loc.location_longitude}: ${_firebaseVehiclePosition!.longitude.toStringAsFixed(6)}"),
+                      Text("${loc.location_speed}: ${_firebaseSpeed.toStringAsFixed(1)} km/h"),
                       const SizedBox(height: 6),
                       Text(
-                        "⏱️ Terakhir update: ${_lastUpdateTime ?? '--:--:--'}",
+                        "${loc.location_last_update} ${_lastUpdateTime ?? '--:--:--'}",
                         style: const TextStyle(
                           fontStyle: FontStyle.italic,
                           color: Colors.grey,
@@ -344,13 +317,14 @@ class _LokasiPageState extends State<LokasiPage> {
     );
   }
 
-  // 📋 List View (Rest Area)
-  Widget _buildListView() {
+  // 📋 List View
+  Widget _buildListView(S loc) {
     return ListView.builder(
       padding: const EdgeInsets.all(16),
       itemCount: _restAreas.length,
       itemBuilder: (context, index) {
         final area = _restAreas[index];
+
         return Container(
           margin: const EdgeInsets.only(bottom: 16),
           decoration: BoxDecoration(
@@ -377,37 +351,55 @@ class _LokasiPageState extends State<LokasiPage> {
                   fit: BoxFit.cover,
                 ),
               ),
+
               Padding(
                 padding:
                     const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(area['name']!,
-                        style: TextStyle(
-                            fontWeight: FontWeight.bold, color: mainColor)),
+                    Text(
+                      area['name'] == "restarea_1"
+                          ? loc.restarea_1
+                          : loc.restarea_2,
+                      style: TextStyle(
+                          fontWeight: FontWeight.bold, color: mainColor),
+                    ),
+
                     const SizedBox(height: 4),
-                    Text(area['type']!,
-                        style: const TextStyle(color: Colors.black54)),
+                    Text(
+                      loc.restarea_type,
+                      style: const TextStyle(color: Colors.black54),
+                    ),
+
                     const SizedBox(height: 6),
                     Row(
-                      children: const [
-                        Icon(LucideIcons.clock, size: 14, color: Colors.grey),
-                        SizedBox(width: 4),
-                        Text('24 Jam', style: TextStyle(fontSize: 12)),
+                      children: [
+                        const Icon(LucideIcons.clock,
+                            size: 14, color: Colors.grey),
+                        const SizedBox(width: 4),
+                        Text(
+                          loc.restarea_24hours,
+                          style: const TextStyle(fontSize: 12),
+                        ),
                       ],
                     ),
+
                     const SizedBox(height: 6),
                     Wrap(
                       spacing: 10,
                       runSpacing: 4,
-                      children: const [
-                        Text('Toilet', style: TextStyle(color: Colors.black54)),
-                        Text('Makanan', style: TextStyle(color: Colors.black54)),
-                        Text('Parkir', style: TextStyle(color: Colors.black54)),
-                        Text('Bahan Bakar',
-                            style: TextStyle(color: Colors.black54)),
-                        Text('ATM', style: TextStyle(color: Colors.black54)),
+                      children: [
+                        Text(loc.facility_toilet,
+                            style: const TextStyle(color: Colors.black54)),
+                        Text(loc.facility_food,
+                            style: const TextStyle(color: Colors.black54)),
+                        Text(loc.facility_parking,
+                            style: const TextStyle(color: Colors.black54)),
+                        Text(loc.facility_fuel,
+                            style: const TextStyle(color: Colors.black54)),
+                        Text(loc.facility_atm,
+                            style: const TextStyle(color: Colors.black54)),
                       ],
                     ),
                   ],

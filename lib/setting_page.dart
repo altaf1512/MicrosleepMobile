@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:intl/intl.dart';
+import 'l10n/generated/l10n.dart';
 
 class PengaturanPage extends StatefulWidget {
   const PengaturanPage({super.key});
@@ -13,17 +14,14 @@ class PengaturanPage extends StatefulWidget {
 class _PengaturanPageState extends State<PengaturanPage> {
   int _selectedTab = 0;
 
-  // Firebase refs
   final userRef = FirebaseDatabase.instance.ref("users");
   final alarmRef = FirebaseDatabase.instance.ref("settings/alarm");
 
-  // User data
   String? nama;
   String? email;
   String? alamat;
   int? umur;
 
-  // Alarm settings
   bool suara = true;
   bool getar = true;
   bool lokasi = true;
@@ -37,9 +35,6 @@ class _PengaturanPageState extends State<PengaturanPage> {
     _loadAlarmSettings();
   }
 
-  // =====================================================
-  // 🔥 Ambil data USER dari Firebase
-  // =====================================================
   Future<void> _loadUserData() async {
     final snapshot = await userRef.get();
     if (!snapshot.exists) return;
@@ -53,9 +48,6 @@ class _PengaturanPageState extends State<PengaturanPage> {
     });
   }
 
-  // =====================================================
-  // 🔔 Load Alarm Settings
-  // =====================================================
   Future<void> _loadAlarmSettings() async {
     final snapshot = await alarmRef.get();
     if (!snapshot.exists) return;
@@ -76,9 +68,6 @@ class _PengaturanPageState extends State<PengaturanPage> {
     });
   }
 
-  // =====================================================
-  // ✏️ Simpan perubahan profil ke Firebase
-  // =====================================================
   Future<void> _updateUserData() async {
     await userRef.update({
       "name": nama ?? "-",
@@ -89,29 +78,28 @@ class _PengaturanPageState extends State<PengaturanPage> {
 
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Data berhasil diperbarui")),
+        SnackBar(content: Text(S.of(context).profile_edit_success)),
       );
     }
   }
 
-  // =====================================================
-  // ✏️ Dialog edit data
-  // =====================================================
   void _showEditDialog(String label, String currentValue, Function(String) onSave) {
+    final loc = S.of(context);
     final controller = TextEditingController(text: currentValue);
 
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
-        title: Text("Edit $label"),
+        title: Text("${loc.edit_title} $label"),
         content: TextField(
           controller: controller,
           decoration: const InputDecoration(border: OutlineInputBorder()),
         ),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text("Batal")),
+            onPressed: () => Navigator.pop(context),
+            child: Text(loc.edit_cancel),
+          ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: mainColor),
             onPressed: () {
@@ -119,38 +107,33 @@ class _PengaturanPageState extends State<PengaturanPage> {
               Navigator.pop(context);
               _updateUserData();
             },
-            child: const Text("Simpan", style: TextStyle(color: Colors.white)),
+            child: Text(loc.edit_save, style: const TextStyle(color: Colors.white)),
           ),
         ],
       ),
     );
   }
 
-  // =====================================================
-  // UI
-  // =====================================================
   @override
   Widget build(BuildContext context) {
+    final loc = S.of(context);
+
     return Scaffold(
       backgroundColor: Colors.grey[100],
       body: SafeArea(
         child: Column(
           children: [
-            const SizedBox(height: 10), // jarak biar nanti bisa tambah background image
-
-            // 🔴🔴🔴 TAB MENU OVAL DI ATAS 🔴🔴🔴
-            _tabHeader(),
-
             const SizedBox(height: 10),
-
+            _tabHeader(loc),
+            const SizedBox(height: 10),
             Expanded(
               child: AnimatedSwitcher(
                 duration: const Duration(milliseconds: 300),
                 child: _selectedTab == 0
-                    ? _buildProfilTab()
+                    ? _buildProfilTab(loc)
                     : _selectedTab == 1
-                        ? _buildAlarmTab()
-                        : _buildStatistikTab(),
+                        ? _buildAlarmTab(loc)
+                        : _buildStatistikTab(loc),
               ),
             )
           ],
@@ -159,25 +142,22 @@ class _PengaturanPageState extends State<PengaturanPage> {
     );
   }
 
-  // =====================================================
-  // OVAL TAB BUTTON
-  // =====================================================
-  Widget _tabHeader() {
+  Widget _tabHeader(S loc) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          _tabButton(LucideIcons.user, "Profil", 0),
-          _tabButton(LucideIcons.bell, "Alarm", 1),
-          _tabButton(LucideIcons.barChart2, "Statistik", 2),
+          _tabButton(LucideIcons.user, loc.settings_tab_profile, 0),
+          _tabButton(LucideIcons.bell, loc.settings_tab_alarm, 1),
+          _tabButton(LucideIcons.barChart2, loc.settings_tab_stats, 2),
         ],
       ),
     );
   }
 
   Widget _tabButton(IconData icon, String text, int index) {
-    bool active = _selectedTab == index;
+    final active = _selectedTab == index;
 
     return GestureDetector(
       onTap: () => setState(() => _selectedTab = index),
@@ -197,11 +177,7 @@ class _PengaturanPageState extends State<PengaturanPage> {
         ),
         child: Row(
           children: [
-            Icon(
-              icon,
-              size: 18,
-              color: active ? Colors.white : mainColor,
-            ),
+            Icon(icon, size: 18, color: active ? Colors.white : mainColor),
             const SizedBox(width: 6),
             Text(
               text,
@@ -216,10 +192,8 @@ class _PengaturanPageState extends State<PengaturanPage> {
     );
   }
 
-  // =====================================================
-  // TAB PROFIL
-  // =====================================================
-  Widget _buildProfilTab() {
+  // ========== PROFIL ==========
+  Widget _buildProfilTab(S loc) {
     if (nama == null) {
       return const Center(child: CircularProgressIndicator());
     }
@@ -231,7 +205,7 @@ class _PengaturanPageState extends State<PengaturanPage> {
         children: [
           _profileCard(),
           const SizedBox(height: 20),
-          _profileInfoCard(),
+          _profileInfoCard(loc),
         ],
       ),
     );
@@ -269,20 +243,17 @@ class _PengaturanPageState extends State<PengaturanPage> {
     );
   }
 
-  Widget _profileInfoCard() {
+  Widget _profileInfoCard(S loc) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-      ),
+      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16)),
       child: Column(
         children: [
-          _editableInfoItem("Nama", nama ?? "-", (v) => nama = v),
-          _editableInfoItem("Email", email ?? "-", (v) => email = v),
-          _editableInfoItem("Alamat", alamat ?? "-", (v) => alamat = v),
-          _editableInfoItem("Umur", umur?.toString() ?? "-", (v) => umur = int.tryParse(v) ?? 0),
+          _editableInfoItem(loc.profile_name, nama ?? "-", (v) => nama = v),
+          _editableInfoItem(loc.profile_email, email ?? "-", (v) => email = v),
+          _editableInfoItem(loc.profile_address, alamat ?? "-", (v) => alamat = v),
+          _editableInfoItem(loc.profile_age, umur?.toString() ?? "-", (v) => umur = int.tryParse(v) ?? 0),
         ],
       ),
     );
@@ -299,8 +270,7 @@ class _PengaturanPageState extends State<PengaturanPage> {
             Text(label, style: const TextStyle(color: Colors.grey)),
             Row(
               children: [
-                Text(value,
-                    style: const TextStyle(fontWeight: FontWeight.w600)),
+                Text(value, style: const TextStyle(fontWeight: FontWeight.w600)),
                 const SizedBox(width: 8),
                 const Icon(Icons.edit, size: 16, color: Colors.grey),
               ],
@@ -311,39 +281,33 @@ class _PengaturanPageState extends State<PengaturanPage> {
     );
   }
 
-  // =====================================================
-  // TAB ALARM
-  // =====================================================
-  Widget _buildAlarmTab() {
+  // ========== ALARM ==========
+  Widget _buildAlarmTab(S loc) {
     return SingleChildScrollView(
       key: const ValueKey("alarm"),
       padding: const EdgeInsets.all(16),
-      child: _alarmCard(),
-    );
-  }
-
-  Widget _alarmCard() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16)),
-      child: Column(
-        children: [
-          _switchItem("Suara Peringatan", "Alarm darurat aktif", suara, (v) {
-            suara = v;
-            setState(() {});
-            _updateAlarmSettings();
-          }),
-          _switchItem("Getaran", "Aktif saat microsleep", getar, (v) {
-            getar = v;
-            setState(() {});
-            _updateAlarmSettings();
-          }),
-          _switchItem("Pelacakan Lokasi", "Untuk rekomendasi rest area", lokasi, (v) {
-            lokasi = v;
-            setState(() {});
-            _updateAlarmSettings();
-          }),
-        ],
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16)),
+        child: Column(
+          children: [
+            _switchItem(loc.alarm_sound, loc.alarm_sound_desc, suara, (v) {
+              suara = v;
+              setState(() {});
+              _updateAlarmSettings();
+            }),
+            _switchItem(loc.alarm_vibration, loc.alarm_vibration_desc, getar, (v) {
+              getar = v;
+              setState(() {});
+              _updateAlarmSettings();
+            }),
+            _switchItem(loc.alarm_tracking, loc.alarm_tracking_desc, lokasi, (v) {
+              lokasi = v;
+              setState(() {});
+              _updateAlarmSettings();
+            }),
+          ],
+        ),
       ),
     );
   }
@@ -375,14 +339,11 @@ class _PengaturanPageState extends State<PengaturanPage> {
     );
   }
 
-  // =====================================================
-  // TAB STATISTIK
-  // =====================================================
-  Widget _buildStatistikTab() {
+  // ========== STATISTIK ==========
+  Widget _buildStatistikTab(S loc) {
     return StreamBuilder(
       stream: FirebaseDatabase.instance.ref().onValue,
       builder: (context, snapshot) {
-        // Default value
         int totalInsiden = 0;
         int streakBebasInsiden = 0;
         double peningkatanBulanIni = 0;
@@ -391,18 +352,13 @@ class _PengaturanPageState extends State<PengaturanPage> {
         if (snapshot.hasData && snapshot.data?.snapshot.value != null) {
           final data = snapshot.data!.snapshot.value as Map;
 
-          // 1️⃣ Total Jam Monitoring
           totalJamMonitoring = data["status"]?["waktu"]?.toString() ?? "0";
 
-          // 2️⃣ Data riwayat microsleep
           if (data["microsleep_history"] != null) {
-            final history = Map<String, dynamic>.from(
-                data["microsleep_history"] as Map);
+            final history = Map<String, dynamic>.from(data["microsleep_history"] as Map);
 
             totalInsiden = history.length;
-
             streakBebasInsiden = _hitungStreak(history);
-
             peningkatanBulanIni = _hitungPeningkatan(history);
           }
         }
@@ -413,19 +369,9 @@ class _PengaturanPageState extends State<PengaturanPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
-                "Statistik Berkendara",
-                style: TextStyle(
-                  color: Color(0xFFBA0403),
-                  fontWeight: FontWeight.bold,
-                  fontSize: 16,
-                ),
-              ),
-              const Text(
-                "Pantau kemajuan keamanan Anda",
-                style: TextStyle(color: Colors.grey),
-              ),
-
+              Text(loc.stats_title,
+                  style: TextStyle(color: mainColor, fontWeight: FontWeight.bold, fontSize: 16)),
+              Text(loc.stats_subtitle, style: const TextStyle(color: Colors.grey)),
               const SizedBox(height: 16),
 
               GridView.count(
@@ -438,25 +384,25 @@ class _PengaturanPageState extends State<PengaturanPage> {
                   _statCard(
                     icon: LucideIcons.clock,
                     value: totalJamMonitoring,
-                    label: "Total Jam Monitoring",
+                    label: loc.stats_total_hours,
                     color: Colors.red[50],
                   ),
                   _statCard(
                     icon: LucideIcons.trendingUp,
                     value: "$streakBebasInsiden",
-                    label: "Hari Aman",
+                    label: loc.stats_safe_days,
                     color: Colors.green[50],
                   ),
                   _statCard(
                     icon: LucideIcons.alertTriangle,
                     value: "$totalInsiden",
-                    label: "Total Insiden",
+                    label: loc.stats_total_incidents,
                     color: Colors.orange[50],
                   ),
                   _statCard(
                     icon: LucideIcons.activity,
                     value: "${peningkatanBulanIni.toStringAsFixed(0)}%",
-                    label: "Peningkatan Bulan Ini",
+                    label: loc.stats_monthly_improvement,
                     color: Colors.teal[50],
                   ),
                 ],
@@ -468,9 +414,6 @@ class _PengaturanPageState extends State<PengaturanPage> {
     );
   }
 
-  // =====================================================
-  // HELPER
-  // =====================================================
   int _hitungStreak(Map history) {
     final today = DateTime.now();
     int streak = 0;
@@ -502,7 +445,6 @@ class _PengaturanPageState extends State<PengaturanPage> {
   double _hitungPeningkatan(Map history) {
     int bulanIni = 0;
     int bulanLalu = 0;
-
     final now = DateTime.now();
 
     for (var item in history.values) {
@@ -510,7 +452,6 @@ class _PengaturanPageState extends State<PengaturanPage> {
 
       try {
         final tgl = DateFormat("dd/MM/yyyy").parse(item["tanggal"]);
-
         if (tgl.month == now.month && tgl.year == now.year) {
           bulanIni++;
         } else if (tgl.month == now.month - 1 && tgl.year == now.year) {
@@ -522,13 +463,9 @@ class _PengaturanPageState extends State<PengaturanPage> {
     if (bulanLalu == 0) {
       return bulanIni > 0 ? 100 : 0;
     }
-
     return ((bulanIni - bulanLalu) / bulanLalu) * 100;
   }
 
-  // =====================================================
-  // STAT CARD UI
-  // =====================================================
   Widget _statCard({
     required IconData icon,
     required String value,
@@ -546,18 +483,8 @@ class _PengaturanPageState extends State<PengaturanPage> {
         children: [
           Icon(icon, color: mainColor, size: 24),
           const SizedBox(height: 10),
-          Text(
-            value,
-            style: const TextStyle(
-              fontSize: 22,
-              fontWeight: FontWeight.bold,
-              color: Colors.black,
-            ),
-          ),
-          Text(
-            label,
-            style: const TextStyle(fontSize: 13, color: Colors.black54),
-          ),
+          Text(value, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+          Text(label, style: const TextStyle(fontSize: 13, color: Colors.black54)),
         ],
       ),
     );

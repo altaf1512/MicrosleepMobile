@@ -3,6 +3,8 @@ import 'package:lucide_icons/lucide_icons.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:intl/intl.dart';
 
+import 'l10n/generated/l10n.dart';
+
 class RiwayatPage extends StatefulWidget {
   const RiwayatPage({super.key});
 
@@ -13,10 +15,12 @@ class RiwayatPage extends StatefulWidget {
 class _RiwayatPageState extends State<RiwayatPage> {
   final mainColor = const Color(0xFFBA0403);
   String _searchQuery = "";
-  bool _sortDesc = true; // true = terbaru dulu
+  bool _sortDesc = true;
 
   @override
   Widget build(BuildContext context) {
+    final loc = S.of(context);
+
     return Scaffold(
       backgroundColor: Colors.grey[100],
       body: SafeArea(
@@ -25,9 +29,9 @@ class _RiwayatPageState extends State<RiwayatPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _searchAndSortBar(),
+              _searchAndSortBar(loc),
               const SizedBox(height: 24),
-              _historyStream(),
+              _historyStream(loc),
             ],
           ),
         ),
@@ -36,9 +40,9 @@ class _RiwayatPageState extends State<RiwayatPage> {
   }
 
   // ===========================================================
-  // 🔍 Pencarian + Sorting
+  // 🔍 SEARCH + SORT BAR
   // ===========================================================
-  Widget _searchAndSortBar() {
+  Widget _searchAndSortBar(S loc) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
@@ -60,7 +64,7 @@ class _RiwayatPageState extends State<RiwayatPage> {
             child: TextField(
               onChanged: (val) => setState(() => _searchQuery = val),
               decoration: InputDecoration(
-                hintText: 'Cari lokasi atau tanggal...',
+                hintText: loc.history_search_hint,   // 🔥 FIXED
                 hintStyle: TextStyle(
                   color: Colors.grey[500],
                   fontSize: 14,
@@ -70,9 +74,7 @@ class _RiwayatPageState extends State<RiwayatPage> {
             ),
           ),
           GestureDetector(
-            onTap: () {
-              setState(() => _sortDesc = !_sortDesc);
-            },
+            onTap: () => setState(() => _sortDesc = !_sortDesc),
             child: Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
@@ -93,22 +95,23 @@ class _RiwayatPageState extends State<RiwayatPage> {
   }
 
   // ===========================================================
-  // 🔥 Ambil Data History
+  // 🔥 HISTORY STREAM
   // ===========================================================
-  Widget _historyStream() {
+  Widget _historyStream(S loc) {
+    final locale = Localizations.localeOf(context).toString(); // 🔥 FIXED
+
     return StreamBuilder(
-      stream:
-          FirebaseDatabase.instance.ref('microsleep_history').onValue,
+      stream: FirebaseDatabase.instance.ref('microsleep_history').onValue,
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator());
         }
 
         if (!snapshot.hasData || snapshot.data?.snapshot.value == null) {
-          return const Center(
+          return Center(
             child: Text(
-              "Belum ada riwayat microsleep.",
-              style: TextStyle(color: Colors.grey),
+              loc.history_no_data,
+              style: const TextStyle(color: Colors.grey),
             ),
           );
         }
@@ -121,59 +124,48 @@ class _RiwayatPageState extends State<RiwayatPage> {
           return Map<String, dynamic>.from(e);
         }).toList();
 
-        // Filter pencarian
+        // Filter search
         if (_searchQuery.isNotEmpty) {
-          final query = _searchQuery.toLowerCase();
+          final q = _searchQuery.toLowerCase();
           historyList = historyList.where((item) {
             final lokasi = (item['lokasi'] ?? "").toLowerCase();
             final tanggal = (item['tanggal'] ?? "").toLowerCase();
-            return lokasi.contains(query) || tanggal.contains(query);
+            return lokasi.contains(q) || tanggal.contains(q);
           }).toList();
         }
 
-        // Sort tanggal
+        // Sort
         historyList.sort((a, b) {
-          final dateA = "${a['tanggal']} ${a['jam']}";
-          final dateB = "${b['tanggal']} ${b['jam']}";
-          return _sortDesc
-              ? dateB.compareTo(dateA)
-              : dateA.compareTo(dateB);
+          final da = "${a['tanggal']} ${a['jam']}";
+          final db = "${b['tanggal']} ${b['jam']}";
+          return _sortDesc ? db.compareTo(da) : da.compareTo(db);
         });
 
-        // ===========================================================
-        // 🧩 GROUPING BERDASARKAN BULAN & TAHUN
-        // ===========================================================
+        // Group by Month
         Map<String, List<Map<String, dynamic>>> grouped = {};
-
         for (var item in historyList) {
-          String tanggal = item["tanggal"] ?? "";
           try {
-            DateTime tgl = DateFormat("dd/MM/yyyy").parse(tanggal);
-            String key = DateFormat("MMMM yyyy").format(tgl); // ex: November 2025
+            DateTime t = DateFormat("dd/MM/yyyy").parse(item["tanggal"]);
+            String key = DateFormat("MMMM yyyy", locale).format(t); // 🔥 FIXED
 
             grouped.putIfAbsent(key, () => []);
             grouped[key]!.add(item);
           } catch (_) {}
         }
 
-        // ===========================================================
-        // 🎨 TAMPILKAN GROUP DALAM URUTAN
-        // ===========================================================
-        List<String> sortedKeys = grouped.keys.toList();
-
-        sortedKeys.sort((a, b) {
-          DateTime da = DateFormat("MMMM yyyy").parse(a);
-          DateTime db = DateFormat("MMMM yyyy").parse(b);
+        List<String> keys = grouped.keys.toList();
+        keys.sort((a, b) {
+          DateTime da = DateFormat("MMMM yyyy", locale).parse(a);  // 🔥 FIXED
+          DateTime db = DateFormat("MMMM yyyy", locale).parse(b);  // 🔥 FIXED
           return _sortDesc ? db.compareTo(da) : da.compareTo(db);
         });
 
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
-          children: sortedKeys.map((bulanKey) {
+          children: keys.map((bulanKey) {
             return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // === Judul Bulan ===
                 Padding(
                   padding: const EdgeInsets.only(top: 20, bottom: 8),
                   child: Text(
@@ -186,17 +178,16 @@ class _RiwayatPageState extends State<RiwayatPage> {
                   ),
                 ),
 
-                // === List Card ===
                 ...grouped[bulanKey]!.map((item) {
-                  return _microsleepCard(
-                    mainColor: mainColor,
-                    waktu: item['jam'] ?? '-',
-                    tanggal: item['tanggal'] ?? '-',
-                    lokasi: item['lokasi'] ?? '-',
+                  return _historyCard(
+                    loc: loc,
+                    waktu: item['jam'] ?? "-",
+                    tanggal: item['tanggal'] ?? "-",
+                    lokasi: item['lokasi'] ?? "-",
                     durasi: "${item['durasi']}s",
                     respons: "${item['respons']}s",
                   );
-                }).toList(),
+                })
               ],
             );
           }).toList(),
@@ -206,15 +197,15 @@ class _RiwayatPageState extends State<RiwayatPage> {
   }
 
   // ===========================================================
-  // 🔺 CARD ITEM
+  // 🎴 HISTORY CARD
   // ===========================================================
-  Widget _microsleepCard({
+  Widget _historyCard({
+    required S loc,
     required String waktu,
     required String tanggal,
     required String lokasi,
     required String durasi,
     required String respons,
-    required Color mainColor,
   }) {
     return Container(
       margin: const EdgeInsets.only(top: 12),
@@ -222,6 +213,7 @@ class _RiwayatPageState extends State<RiwayatPage> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: mainColor.withOpacity(0.2)),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.05),
@@ -229,12 +221,11 @@ class _RiwayatPageState extends State<RiwayatPage> {
             offset: const Offset(0, 3),
           ),
         ],
-        border: Border.all(color: mainColor.withOpacity(0.2), width: 1),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // 🔔 Icon
+          // ICON
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
@@ -245,19 +236,24 @@ class _RiwayatPageState extends State<RiwayatPage> {
           ),
           const SizedBox(width: 14),
 
-          // 📄 Detail card
+          // DETAIL
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text("Deteksi Microsleep",
+                Text(loc.microsleepDetected,
                     style: TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.bold,
-                        color: mainColor)),
+                      fontSize: 15,
+                      fontWeight: FontWeight.bold,
+                      color: mainColor,
+                    )),
                 const SizedBox(height: 3),
-                const Text("Mata tertutup selama 3 detik berturut turut",
-                    style: TextStyle(color: Colors.black87, fontSize: 13)),
+
+                Text(
+                  loc.alarmInstruction,
+                  style: const TextStyle(fontSize: 13, color: Colors.black87),
+                ),
+
                 const SizedBox(height: 6),
 
                 Row(
@@ -268,20 +264,18 @@ class _RiwayatPageState extends State<RiwayatPage> {
                     Text(tanggal,
                         style:
                             const TextStyle(color: Colors.grey, fontSize: 12)),
-
                     const SizedBox(width: 12),
                     const Icon(LucideIcons.mapPin,
                         size: 14, color: Colors.grey),
                     const SizedBox(width: 4),
-
                     Expanded(
                       child: Text(
                         lokasi,
+                        overflow: TextOverflow.ellipsis,
                         style:
                             const TextStyle(color: Colors.grey, fontSize: 12),
-                        overflow: TextOverflow.ellipsis,
                       ),
-                    )
+                    ),
                   ],
                 ),
 
@@ -292,31 +286,31 @@ class _RiwayatPageState extends State<RiwayatPage> {
                     const Icon(LucideIcons.clock,
                         size: 14, color: Colors.grey),
                     const SizedBox(width: 4),
-                    Text("Durasi: $durasi",
+                    Text("${loc.history_duration}: $durasi",
                         style:
                             const TextStyle(color: Colors.grey, fontSize: 12)),
                     const SizedBox(width: 12),
-
                     const Icon(LucideIcons.activity,
                         size: 14, color: Colors.grey),
                     const SizedBox(width: 4),
-                    Text("Respons: $respons",
+                    Text("${loc.history_response}: $respons",
                         style:
                             const TextStyle(color: Colors.grey, fontSize: 12)),
                   ],
-                )
+                ),
               ],
             ),
           ),
 
-          // Jam kanan
+          // JAM
           Text(
             waktu,
             style: const TextStyle(
-                fontSize: 14,
-                color: Colors.black87,
-                fontWeight: FontWeight.bold),
-          )
+              fontSize: 14,
+              color: Colors.black87,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
         ],
       ),
     );
