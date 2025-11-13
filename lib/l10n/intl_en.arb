@@ -1,0 +1,57 @@
+{
+  "@@locale": "en",
+
+  "appTitle": "Microsleep Guard",
+
+  "welcomeDriver": "Good Morning, Driver",
+  "monitoringSubtitle": "Monitor microsleep and your trip in real-time.",
+  "monitoringActive": "Realtime monitoring active",
+  "microsleepDetected": "Microsleep Detected",
+  "normalStatus": "Normal",
+
+  "driverStatus": "Driver Status",
+  "microsleepDuration": "Microsleep Duration",
+  "battery": "Battery",
+  "gps": "GPS",
+  "iotDevice": "IoT Device",
+  "deviceStatus": "Device Status",
+
+  "turnOffAlarm": "Turn Off Alarm / Save to History",
+  "alarmStopped": "Alarm stopped",
+  "alarmDetected": "Microsleep Detected!",
+  "alarmInstruction": "Stop the vehicle safely",
+
+  "history": "History",
+  "settings": "Settings",
+  "location": "Location",
+
+  "editProfile": "Edit Profile",
+  "name": "Name",
+  "email": "Email",
+  "address": "Address",
+  "age": "Age",
+
+  "save": "Save",
+  "cancel": "Cancel",
+
+  "sound": "Warning Sound",
+  "vibration": "Vibration",
+  "tracking": "Location Tracking",
+
+  "soundDesc": "Emergency alarm active",
+  "vibrationDesc": "Vibrates on microsleep",
+  "trackingDesc": "For rest area recommendation",
+
+  "safeDays": "Safe Days",
+  "totalIncidents": "Total Incidents",
+  "monthlyImprovement": "Monthly Improvement",
+  "totalMonitoringHours": "Total Monitoring Hours",
+
+  "currentLocation": "Current Location",
+  "loading": "Loading...",
+  "noData": "No data available",
+
+  "english": "English",
+  "indonesian": "Indonesian",
+  "chooseLanguage": "Choose Language"
+}

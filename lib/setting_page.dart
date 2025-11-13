@@ -136,7 +136,13 @@ class _PengaturanPageState extends State<PengaturanPage> {
       body: SafeArea(
         child: Column(
           children: [
+            const SizedBox(height: 10), // jarak biar nanti bisa tambah background image
+
+            // 🔴🔴🔴 TAB MENU OVAL DI ATAS 🔴🔴🔴
             _tabHeader(),
+
+            const SizedBox(height: 10),
+
             Expanded(
               child: AnimatedSwitcher(
                 duration: const Duration(milliseconds: 300),
@@ -153,12 +159,14 @@ class _PengaturanPageState extends State<PengaturanPage> {
     );
   }
 
+  // =====================================================
+  // OVAL TAB BUTTON
+  // =====================================================
   Widget _tabHeader() {
-    return Container(
-      color: Colors.white,
-      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 20),
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           _tabButton(LucideIcons.user, "Profil", 0),
           _tabButton(LucideIcons.bell, "Alarm", 1),
@@ -173,26 +181,37 @@ class _PengaturanPageState extends State<PengaturanPage> {
 
     return GestureDetector(
       onTap: () => setState(() => _selectedTab = index),
-      child: Column(
-        children: [
-          Row(
-            children: [
-              Icon(icon, color: active ? mainColor : Colors.grey),
-              const SizedBox(width: 6),
-              Text(text,
-                  style: TextStyle(
-                      color: active ? mainColor : Colors.grey[700],
-                      fontWeight: FontWeight.w600)),
-            ],
-          ),
-          const SizedBox(height: 4),
-          AnimatedContainer(
-            duration: const Duration(milliseconds: 250),
-            height: 3,
-            width: 100,
-            color: active ? mainColor : Colors.transparent,
-          )
-        ],
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 18),
+        decoration: BoxDecoration(
+          color: active ? mainColor : Colors.white,
+          borderRadius: BorderRadius.circular(30),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.08),
+              blurRadius: 6,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Icon(
+              icon,
+              size: 18,
+              color: active ? Colors.white : mainColor,
+            ),
+            const SizedBox(width: 6),
+            Text(
+              text,
+              style: TextStyle(
+                color: active ? Colors.white : Colors.black87,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -357,7 +376,7 @@ class _PengaturanPageState extends State<PengaturanPage> {
   }
 
   // =====================================================
-  // TAB STATISTIK (REAL)
+  // TAB STATISTIK
   // =====================================================
   Widget _buildStatistikTab() {
     return StreamBuilder(
@@ -450,7 +469,7 @@ class _PengaturanPageState extends State<PengaturanPage> {
   }
 
   // =====================================================
-  // STATISTIK HELPER
+  // HELPER
   // =====================================================
   int _hitungStreak(Map history) {
     final today = DateTime.now();

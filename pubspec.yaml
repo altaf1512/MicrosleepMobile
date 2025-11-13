@@ -11,31 +11,35 @@ dependencies:
   flutter:
     sdk: flutter
 
-  # 📱 UI & Icon
+  # UI & Icons
   cupertino_icons: ^1.0.8
   lucide_icons: ^0.257.0
   curved_navigation_bar: ^1.0.3
+  shared_preferences: ^2.2.2
+  provider: ^6.1.2   #  ✅ WAJIB UNTUK LANGUAGE SERVICE
 
-  # 🌍 Maps & Lokasi
+  # Maps & GPS
   google_maps_flutter: ^2.12.3
   geolocator: ^13.0.1
 
-  # 🔔 Notifikasi & Permission
-  flutter_local_notifications: ^17.2.2  
+  # Notifikasi & Permission
+  flutter_local_notifications: ^17.2.2
   permission_handler: ^11.3.0
 
-  # ☁️ Firebase
+  # Firebase
   firebase_core: ^3.5.0
-  firebase_database: ^11.0.4             
+  firebase_database: ^11.0.4
 
-  # 📊 Date & Format
+  # Localization
+  flutter_localizations:
+    sdk: flutter
   intl: ^0.19.0
 
-  # 🔊 Audio Player
+  # Audio & Vibrasi
   audioplayers: ^6.0.0
   vibration: ^1.7.4
 
-  # 🎞️ Animasi (Lottie JSON)
+  # Animasi
   lottie: ^3.1.0
 
 dev_dependencies:
@@ -43,10 +47,20 @@ dev_dependencies:
     sdk: flutter
   flutter_lints: ^5.0.0
 
+  # Wajib untuk generate l10n/generated/*
+  intl_utils: ^2.8.3
+
+# ============================
+#        L10N / I18N
+# ============================
+flutter_intl:
+  enabled: true
+  arb_dir: lib/l10n
+  output_dir: lib/l10n/generated
+
 flutter:
   uses-material-design: true
 
-  # 🧩 Daftar asset lokal
   assets:
     - assets/monyet.jpeg
     - assets/gambar.png
@@ -55,3 +69,5 @@ flutter:
     - assets/animation/red 1.json
     - assets/animation/Black Check.json
     - assets/sound/alarm.wav
+    - assets/flag_id.png
+    - assets/flag_us.png

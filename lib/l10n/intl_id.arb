@@ -1,0 +1,57 @@
+{
+  "@@locale": "id",
+
+  "appTitle": "Microsleep Guard",
+
+  "welcomeDriver": "Selamat Pagi, Pengemudi",
+  "monitoringSubtitle": "Pantau kondisi microsleep dan perjalanan Anda secara real-time.",
+  "monitoringActive": "Monitoring realtime aktif",
+  "microsleepDetected": "Microsleep Terdeteksi",
+  "normalStatus": "Normal",
+
+  "driverStatus": "Status Pengemudi",
+  "microsleepDuration": "Durasi Microsleep",
+  "battery": "Baterai",
+  "gps": "GPS",
+  "iotDevice": "Perangkat IoT",
+  "deviceStatus": "Status Perangkat",
+
+  "turnOffAlarm": "Matikan Alarm / Simpan Riwayat",
+  "alarmStopped": "Alarm dimatikan",
+  "alarmDetected": "Microsleep Terdeteksi!",
+  "alarmInstruction": "Segera hentikan kendaraan dengan aman",
+
+  "history": "Riwayat",
+  "settings": "Pengaturan",
+  "location": "Lokasi",
+
+  "editProfile": "Edit Profil",
+  "name": "Nama",
+  "email": "Email",
+  "address": "Alamat",
+  "age": "Umur",
+
+  "save": "Simpan",
+  "cancel": "Batal",
+
+  "sound": "Suara Peringatan",
+  "vibration": "Getaran",
+  "tracking": "Pelacakan Lokasi",
+
+  "soundDesc": "Alarm darurat aktif",
+  "vibrationDesc": "Aktif saat microsleep",
+  "trackingDesc": "Untuk rekomendasi rest area",
+
+  "safeDays": "Hari Aman",
+  "totalIncidents": "Total Insiden",
+  "monthlyImprovement": "Peningkatan Bulan Ini",
+  "totalMonitoringHours": "Total Jam Monitoring",
+
+  "currentLocation": "Lokasi Sekarang",
+  "loading": "Memuat...",
+  "noData": "Tidak ada data",
+
+  "english": "Bahasa Inggris",
+  "indonesian": "Bahasa Indonesia",
+  "chooseLanguage": "Pilih Bahasa"
+}
