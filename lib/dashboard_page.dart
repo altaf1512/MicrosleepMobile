@@ -4,7 +4,6 @@ import 'package:lucide_icons/lucide_icons.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:intl/intl.dart';
 import 'package:intl/date_symbol_data_local.dart';
-import 'package:audioplayers/audioplayers.dart' as ap;
 import 'package:geolocator/geolocator.dart';
 import 'microsleep_call_overlay.dart';
 
@@ -19,10 +18,9 @@ class DashboardPage extends StatefulWidget {
 
 class _DashboardPageState extends State<DashboardPage> {
   final mainColor = const Color(0xFFBA0403);
-  final ap.AudioPlayer _player = ap.AudioPlayer();
 
-  bool _isAlarmPlaying = false;
-  DateTime? _microsleepStartTime;
+  bool _isMicrosleep = false;
+  int? _startTimeMillis; // FIX: ambil dari Firebase
   Position? _currentPosition;
 
   String currentTime = "--:--:--";
@@ -35,6 +33,9 @@ class _DashboardPageState extends State<DashboardPage> {
     _initSetup();
   }
 
+  // =========================================================
+  // INIT AWAL
+  // =========================================================
   Future<void> _initSetup() async {
     await initializeDateFormatting('id_ID', null);
 
@@ -43,37 +44,39 @@ class _DashboardPageState extends State<DashboardPage> {
 
     await _checkPermissionAndGetLocation();
 
-    FirebaseDatabase.instance.ref('status/user').onValue.listen((event) async {
+    // Listener status microsleep
+    FirebaseDatabase.instance.ref('status').onValue.listen((event) {
       if (!mounted) return;
-      final value = event.snapshot.value?.toString() ?? 'normal';
 
-      if (value.toLowerCase() == 'microsleep' && !_isAlarmPlaying) {
-        _isAlarmPlaying = true;
-        _microsleepStartTime = DateTime.now();
+      final data = event.snapshot.value as Map?;
 
-        await _player.setReleaseMode(ap.ReleaseMode.loop);
-        await _player.play(ap.AssetSource('sound/alarm.wav'));
+      String user = data?["user"]?.toString().toLowerCase() ?? "normal";
+      int? startMillis = data?["start_time"];
 
+      bool nowMicrosleep = user == "microsleep";
+
+      if (nowMicrosleep && !_isMicrosleep) {
+        // Microsleep baru mulai
+        _startTimeMillis = startMillis; // FIX
         MicrosleepCallOverlay.show(context: context);
-
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text("⚠️ Deteksi Microsleep! Alarm menyala."),
-              backgroundColor: Colors.red,
-              duration: Duration(seconds: 3),
-            ),
-          );
-        }
-      } else if (value.toLowerCase() != 'microsleep' && _isAlarmPlaying) {
-        await _player.stop();
-        _isAlarmPlaying = false;
-        _microsleepStartTime = null;
+      } 
+        
+      else if (!nowMicrosleep && _isMicrosleep) {
+        // Microsleep selesai
+        _startTimeMillis = null;
         MicrosleepCallOverlay.hide();
       }
+
+      setState(() {
+        _isMicrosleep = nowMicrosleep;
+        _startTimeMillis = startMillis;
+      });
     });
   }
 
+  // =========================================================
+  // GPS
+  // =========================================================
   Future<void> _checkPermissionAndGetLocation() async {
     bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
     if (!serviceEnabled) return;
@@ -83,35 +86,35 @@ class _DashboardPageState extends State<DashboardPage> {
       permission = await Geolocator.requestPermission();
     }
 
-    if (permission == LocationPermission.always ||
-        permission == LocationPermission.whileInUse) {
-      try {
-        _currentPosition = await Geolocator.getCurrentPosition(
-          desiredAccuracy: LocationAccuracy.best,
-        );
-      } catch (e) {
-        debugPrint("❌ Gagal ambil lokasi: $e");
-      }
+    if (permission == LocationPermission.deniedForever) return;
+
+    try {
+      _currentPosition = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.best,
+      );
+    } catch (e) {
+      debugPrint("❌ Lokasi gagal: $e");
     }
   }
 
-  void _updateDateTime({bool useFallback = false}) {
+  // =========================================================
+  void _updateDateTime() {
     final now = DateTime.now();
     setState(() {
       currentTime = DateFormat('HH:mm:ss').format(now);
-      currentDate = useFallback
-          ? DateFormat('d MMMM yyyy').format(now)
-          : DateFormat('d MMMM yyyy', 'id_ID').format(now);
+      currentDate = DateFormat('d MMMM yyyy', 'id_ID').format(now);
     });
   }
 
   @override
   void dispose() {
     _timer?.cancel();
-    _player.dispose();
     super.dispose();
   }
 
+  // =========================================================
+  // UI
+  // =========================================================
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -138,6 +141,9 @@ class _DashboardPageState extends State<DashboardPage> {
     );
   }
 
+  // =========================================================
+  // HEADER
+  // =========================================================
   Widget _headerSection() => Container(
         width: double.infinity,
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
@@ -148,13 +154,6 @@ class _DashboardPageState extends State<DashboardPage> {
             end: Alignment.bottomRight,
           ),
           borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.red.shade200.withOpacity(0.5),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
-            ),
-          ],
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -162,25 +161,17 @@ class _DashboardPageState extends State<DashboardPage> {
             const Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  "Selamat Datang, Pengemudi!",
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 18,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
+                Text("Selamat Datang, Pengemudi!",
+                    style: TextStyle(color: Colors.white, fontSize: 18)),
                 SizedBox(height: 4),
-                Text(
-                  "Pantau kondisi berkendara Anda",
-                  style: TextStyle(color: Colors.white70, fontSize: 13),
-                ),
+                Text("Pantau kondisi berkendara Anda",
+                    style: TextStyle(color: Colors.white70, fontSize: 13)),
               ],
             ),
-            CircleAvatar(
+            const CircleAvatar(
               radius: 24,
-              backgroundColor: Colors.white.withOpacity(0.2),
-              child: const Icon(LucideIcons.user, color: Colors.white),
+              backgroundColor: Colors.white38,
+              child: Icon(LucideIcons.user, color: Colors.white),
             ),
           ],
         ),
@@ -200,244 +191,106 @@ class _DashboardPageState extends State<DashboardPage> {
         ],
       );
 
+  // =========================================================
+  // IOT STATUS
+  // =========================================================
   Widget _iotStatus() => StreamBuilder(
         stream: FirebaseDatabase.instance.ref().onValue,
         builder: (context, snapshot) {
-          String gpsStatus = "OFF";
-          String iotStatus = "off";
-          int batteryLevel = 0;
+          String gps = "OFF";
+          String iot = "off";
+          int bat = 0;
 
           if (snapshot.hasData && snapshot.data?.snapshot.value != null) {
             final data = snapshot.data!.snapshot.value as Map;
-            if (data["vehicle"] != null) {
-              gpsStatus = data["vehicle"]["gps_status"]?.toString() ?? "OFF";
-            }
-            if (data["status"] != null) {
-              iotStatus = data["status"]["iot"]?.toString() ?? "off";
-              batteryLevel =
-                  int.tryParse(data["status"]["baterai"].toString()) ?? 0;
-            }
+
+            gps = data["vehicle"]?["gps_status"] ?? "OFF";
+            iot = data["status"]?["iot"] ?? "off";
+            bat = int.tryParse(data["status"]?["baterai"].toString() ?? "0") ?? 0;
           }
 
-          Color gpsColor =
-              gpsStatus.toUpperCase() == "ON" ? Colors.green : Colors.red;
-          Color iotColor =
-              iotStatus.toLowerCase() == "on" ? Colors.green : Colors.red;
-
-          Color batteryColor;
-          if (batteryLevel < 30) {
-            batteryColor = Colors.red;
-          } else if (batteryLevel < 70) {
-            batteryColor = Colors.amber;
-          } else {
-            batteryColor = Colors.green;
-          }
-
-          return Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black12.withOpacity(0.05),
-                  blurRadius: 8,
-                  offset: const Offset(0, 3),
-                ),
-              ],
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                _statusItem(
-                    icon: LucideIcons.cpu,
-                    label: "Perangkat IoT",
-                    value: iotStatus.toUpperCase(),
-                    color: iotColor),
-                _statusItem(
-                    icon: LucideIcons.mapPin,
-                    label: "GPS",
-                    value: gpsStatus.toUpperCase(),
-                    color: gpsColor),
-                _statusItem(
-                    icon: LucideIcons.battery,
-                    label: "Baterai",
-                    value: "$batteryLevel%",
-                    color: batteryColor),
-              ],
-            ),
-          );
+          return _iotContainer(gps, iot, bat);
         },
       );
 
-  Widget _travelStats() => StreamBuilder(
-        stream: FirebaseDatabase.instance.ref("status").onValue,
-        builder: (context, snapshot) {
-          String waktu = "00:00:00";
-          String userStatus = "normal";
+  Widget _iotContainer(String gps, String iot, int bat) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceAround,
+        children: [
+          _statusItem(icon: LucideIcons.cpu, label: "IoT", value: iot.toUpperCase(), color: iot == "on" ? Colors.green : Colors.red),
+          _statusItem(icon: LucideIcons.mapPin, label: "GPS", value: gps.toUpperCase(), color: gps == "ON" ? Colors.green : Colors.red),
+          _statusItem(icon: LucideIcons.battery, label: "Baterai", value: "$bat%", color: bat < 30 ? Colors.red : bat < 60 ? Colors.orange : Colors.green),
+        ],
+      ),
+    );
+  }
 
-          if (snapshot.hasData && snapshot.data?.snapshot.value != null) {
-            final data = snapshot.data!.snapshot.value as Map;
-            waktu = data["waktu"]?.toString() ?? "00:00:00";
-            userStatus = data["user"]?.toString() ?? "normal";
-          }
-
-          Color statusColor;
-          String statusLabel;
-          IconData iconStatus;
-
-          switch (userStatus.toLowerCase()) {
-            case "microsleep":
-              statusColor = Colors.red;
-              statusLabel = "Deteksi Microsleep";
-              iconStatus = LucideIcons.alertOctagon;
-              break;
-            case "alert":
-              statusColor = Colors.orange;
-              statusLabel = "Peringatan";
-              iconStatus = LucideIcons.alertTriangle;
-              break;
-            default:
-              statusColor = Colors.green;
-              statusLabel = "Normal";
-              iconStatus = LucideIcons.checkCircle;
-          }
-
-          return Container(
-            padding: const EdgeInsets.all(18),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black12.withOpacity(0.05),
-                  blurRadius: 8,
-                  offset: const Offset(0, 3),
-                ),
-              ],
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text("Statistik Perjalanan",
-                    style:
-                        TextStyle(fontWeight: FontWeight.w600, fontSize: 16)),
-                const SizedBox(height: 14),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceAround,
-                  children: [
-                    _infoBox(
-                        icon: LucideIcons.clock,
-                        label: "Durasi Sesi",
-                        value: waktu.replaceAll('.', ':'),
-                        color: mainColor),
-                    _infoBox(
-                        icon: iconStatus,
-                        label: statusLabel,
-                        value: userStatus.toUpperCase(),
-                        color: statusColor),
-                  ],
-                ),
-              ],
-            ),
-          );
-        },
-      );
-
-  Widget _alarmButton() => SizedBox(
-        width: double.infinity,
-        child: ElevatedButton.icon(
-          onPressed: () async {
-            final userRef = FirebaseDatabase.instance.ref("status/user");
-            final historyRef =
-                FirebaseDatabase.instance.ref("microsleep_history");
-            final snapshot = await userRef.get();
-
-            if (snapshot.exists && snapshot.value == "microsleep") {
-              await _player.stop();
-              _isAlarmPlaying = false;
-              await userRef.set("normal");
-
-              final end = DateTime.now();
-              double durasi = 0;
-              if (_microsleepStartTime != null) {
-                durasi =
-                    end.difference(_microsleepStartTime!).inSeconds.toDouble();
-              }
-
-              final tanggal = DateFormat('dd/MM/yyyy').format(end);
-              final jam = DateFormat('HH:mm:ss').format(end);
-
-              String lokasi;
-              if (_currentPosition != null) {
-                lokasi =
-                    "Lat: ${_currentPosition!.latitude.toStringAsFixed(5)}, Lon: ${_currentPosition!.longitude.toStringAsFixed(5)}";
-              } else {
-                lokasi = "Lokasi tidak tersedia";
-              }
-
-              await historyRef.push().set({
-                "tanggal": tanggal,
-                "jam": jam,
-                "lokasi": lokasi,
-                "durasi": durasi,
-                "status": "microsleep",
-              });
-
-              if (mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(
-                        "✅ Alarm dimatikan (${durasi.toStringAsFixed(1)} detik) & riwayat tersimpan"),
-                    backgroundColor: Colors.green,
-                  ),
-                );
-              }
-            }
-          },
-          icon: const Icon(LucideIcons.bellRing, color: Colors.white),
-          label: const Text(
-            "Matikan Alarm / Simpan Riwayat",
-            style: TextStyle(fontSize: 16, color: Colors.white),
-          ),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: mainColor,
-            padding: const EdgeInsets.symmetric(vertical: 14),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(14),
-            ),
-            elevation: 5,
-            shadowColor: mainColor.withOpacity(0.5),
-          ),
-        ),
-      );
-
-  Widget _statusItem({
-    required IconData icon,
-    required String label,
-    required String value,
-    required Color color,
-  }) {
+  Widget _statusItem({required IconData icon, required String label, required String value, required Color color}) {
     return Column(
       children: [
         Icon(icon, color: color, size: 26),
-        const SizedBox(height: 6),
-        Text(label, style: const TextStyle(fontSize: 12)),
-        Text(value,
-            style: TextStyle(
-                fontSize: 13, fontWeight: FontWeight.bold, color: color)),
+        Text(label),
+        Text(value, style: TextStyle(color: color, fontWeight: FontWeight.bold)),
       ],
     );
   }
 
-  Widget _infoBox({
-    required IconData icon,
-    required String label,
-    required String value,
-    required Color color,
-  }) {
+  // =========================================================
+  // STATISTIK PERJALANAN
+  // =========================================================
+  Widget _travelStats() => StreamBuilder(
+        stream: FirebaseDatabase.instance.ref("status").onValue,
+        builder: (context, snapshot) {
+          String user = "normal";
+          int? startMillis;
+
+          if (snapshot.hasData && snapshot.data?.snapshot.value != null) {
+            final data = snapshot.data!.snapshot.value as Map;
+            user = data["user"] ?? "normal";
+            startMillis = data["start_time"];
+          }
+
+          return _travelStatsContainer(user, startMillis);
+        },
+      );
+
+  Widget _travelStatsContainer(String user, int? startMillis) {
+    int durasi = 0;
+
+    if (user == "microsleep" && startMillis != null) {
+      durasi = ((DateTime.now().millisecondsSinceEpoch - startMillis) / 1000).floor();
+    }
+
     return Container(
-      width: 130,
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceAround,
+        children: [
+          _infoBox(icon: LucideIcons.clock, label: "Durasi", value: "$durasi dtk", color: mainColor),
+          _infoBox(
+            icon: user == "microsleep" ? LucideIcons.alertTriangle : LucideIcons.checkCircle,
+            label: "Status",
+            value: user.toUpperCase(),
+            color: user == "microsleep" ? Colors.red : Colors.green,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _infoBox({required IconData icon, required String label, required String value, required Color color}) {
+    return Container(
+      width: 140,
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: color.withOpacity(0.25),
@@ -445,14 +298,72 @@ class _DashboardPageState extends State<DashboardPage> {
       ),
       child: Column(
         children: [
-          Icon(icon, color: color, size: 28),
-          const SizedBox(height: 8),
-          Text(value,
-              style: TextStyle(
-                  fontWeight: FontWeight.bold, fontSize: 15, color: color)),
-          Text(label, style: const TextStyle(fontSize: 12)),
+          Icon(icon, color: color, size: 26),
+          Text(value, style: TextStyle(color: color, fontWeight: FontWeight.bold)),
+          Text(label),
         ],
       ),
     );
   }
+
+  // =========================================================
+  // BUTTON "MATIKAN ALARM"
+  // =========================================================
+  Widget _alarmButton() => SizedBox(
+        width: double.infinity,
+        child: ElevatedButton.icon(
+          onPressed: () async {
+            final dbStatus = FirebaseDatabase.instance.ref("status");
+            final dbUser = FirebaseDatabase.instance.ref("status/user");
+            final dbHistory = FirebaseDatabase.instance.ref("microsleep_history");
+
+            final snap = await dbUser.get();
+            if (!snap.exists || snap.value != "microsleep") return;
+
+            // ambil waktu mulai dari firebase
+            final statusSnap = await dbStatus.get();
+            int? startMillis = statusSnap.child("start_time").value as int?;
+
+            await dbUser.set("normal");
+
+            double durasi = 0;
+            if (startMillis != null) {
+              durasi = (DateTime.now().millisecondsSinceEpoch - startMillis) / 1000;
+            }
+
+            String tgl = DateFormat('dd/MM/yyyy').format(DateTime.now());
+            String jam = DateFormat('HH:mm:ss').format(DateTime.now());
+
+            String lokasi = (_currentPosition != null)
+                ? "Lat: ${_currentPosition!.latitude.toStringAsFixed(5)}, Lon: ${_currentPosition!.longitude.toStringAsFixed(5)}"
+                : "Lokasi tidak tersedia";
+
+            await dbHistory.push().set({
+              "tanggal": tgl,
+              "jam": jam,
+              "durasi": durasi,
+              "lokasi": lokasi,
+              "status": "microsleep",
+              "respons": durasi,
+            });
+
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text("🟢 Alarm dimatikan (${durasi.toStringAsFixed(1)} detik)"),
+                  backgroundColor: Colors.green,
+                ),
+              );
+            }
+          },
+          icon: const Icon(LucideIcons.bellRing, color: Colors.white),
+          label: const Text("Matikan Alarm / Simpan Riwayat",
+              style: TextStyle(color: Colors.white)),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: mainColor,
+            padding: const EdgeInsets.symmetric(vertical: 14),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+          ),
+        ),
+      );
 }

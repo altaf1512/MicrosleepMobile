@@ -21,18 +21,19 @@ dependencies:
   geolocator: ^13.0.1
 
   # 🔔 Notifikasi & Permission
-  flutter_local_notifications: ^17.2.2   # ✅ gunakan versi terbaru saja
+  flutter_local_notifications: ^17.2.2  
   permission_handler: ^11.3.0
 
   # ☁️ Firebase
   firebase_core: ^3.5.0
-  firebase_database: ^11.0.4             # ✅ sinkron dengan firebase_core
+  firebase_database: ^11.0.4             
 
   # 📊 Date & Format
   intl: ^0.19.0
 
   # 🔊 Audio Player
   audioplayers: ^6.0.0
+  vibration: ^1.7.4
 
   # 🎞️ Animasi (Lottie JSON)
   lottie: ^3.1.0
