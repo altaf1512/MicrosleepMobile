@@ -11,48 +11,39 @@ dependencies:
   flutter:
     sdk: flutter
 
-  # UI & Icons
   cupertino_icons: ^1.0.8
   lucide_icons: ^0.257.0
   curved_navigation_bar: ^1.0.3
   shared_preferences: ^2.2.2
-  provider: ^6.1.2   #  ✅ WAJIB UNTUK LANGUAGE SERVICE
+  provider: ^6.1.2
 
-  # Maps & GPS
   google_maps_flutter: ^2.12.3
   geolocator: ^13.0.1
 
-  # Notifikasi & Permission
   flutter_local_notifications: ^17.2.2
   permission_handler: ^11.3.0
 
-  # Firebase
   firebase_core: ^3.5.0
   firebase_database: ^11.0.4
 
-  # Localization
+  # Background Service versi stabil
+  flutter_background_service: ^5.0.7
+  flutter_background_service_android: ^6.1.0
+
   flutter_localizations:
     sdk: flutter
   intl: ^0.19.0
 
-  # Audio & Vibrasi
   audioplayers: ^6.0.0
   vibration: ^1.7.4
-
-  # Animasi
   lottie: ^3.1.0
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^5.0.0
-
-  # Wajib untuk generate l10n/generated/*
   intl_utils: ^2.8.3
 
-# ============================
-#        L10N / I18N
-# ============================
 flutter_intl:
   enabled: true
   arb_dir: lib/l10n
@@ -68,6 +59,5 @@ flutter:
     - assets/animation/sign in red.json
     - assets/animation/red 1.json
     - assets/animation/Black Check.json
-    - assets/sound/alarm.wav
     - assets/flag_id.png
     - assets/flag_us.png

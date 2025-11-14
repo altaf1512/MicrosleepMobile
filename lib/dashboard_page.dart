@@ -7,8 +7,6 @@ import 'package:intl/date_symbol_data_local.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:provider/provider.dart';
 
-import 'microsleep_call_overlay.dart';
-import 'services/microsleep_listener.dart';
 import 'services/language_service.dart';
 import 'l10n/generated/l10n.dart';
 
@@ -24,10 +22,7 @@ class DashboardPage extends StatefulWidget {
 class _DashboardPageState extends State<DashboardPage> {
   final mainColor = const Color(0xFFBA0403);
 
-  bool _isMicrosleep = false;
-  int? _startTimeMillis;
   Position? _currentPosition;
-
   String currentTime = "--:--:--";
   String currentDate = "Loading...";
   Timer? _timer;
@@ -38,9 +33,6 @@ class _DashboardPageState extends State<DashboardPage> {
     _initSetup();
   }
 
-  // =====================================================
-  // INITIAL SETUP
-  // =====================================================
   Future<void> _initSetup() async {
     await initializeDateFormatting('id_ID', null);
 
@@ -48,45 +40,8 @@ class _DashboardPageState extends State<DashboardPage> {
     _timer = Timer.periodic(const Duration(seconds: 1), (_) => _updateDateTime());
 
     await _checkPermissionAndGetLocation();
-
-    // =====================================================
-    // LISTENER status_user (MICROSLEEP)
-    // =====================================================
-    FirebaseDatabase.instance.ref('status_user').onValue.listen((event) {
-      if (!mounted) return;
-
-      final data = event.snapshot.value as Map?;
-
-      String userState = data?["state"]?.toString().toLowerCase() ?? "normal";
-
-      int? startMillis = int.tryParse(
-        data?["timestamp"]?.toString() ?? "0",
-      );
-
-      bool nowMicrosleep = userState == "microsleep";
-
-      // popup show/hide
-      if (nowMicrosleep && !_isMicrosleep) {
-        _startTimeMillis = startMillis;
-        MicrosleepCallOverlay.show(context: context);
-      } else if (!nowMicrosleep && _isMicrosleep) {
-        _startTimeMillis = null;
-        MicrosleepCallOverlay.hide();
-      }
-
-      setState(() {
-        _isMicrosleep = nowMicrosleep;
-        _startTimeMillis = startMillis;
-      });
-    });
-
-    // =====================================================
-    // START MICROSLEEP ALARM LISTENER
-    // =====================================================
-    MicrosleepListener.start(context);
   }
 
-  // =====================================================
   Future<void> _checkPermissionAndGetLocation() async {
     bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
     if (!serviceEnabled) return;
@@ -244,104 +199,118 @@ class _DashboardPageState extends State<DashboardPage> {
   Widget _statusSummaryCard() {
     final loc = S.of(context);
 
-    final chipColor = _isMicrosleep ? Colors.red : Colors.green;
-    final chipText = _isMicrosleep ? loc.microsleepDetected : loc.normalStatus;
+    return StreamBuilder(
+      stream: FirebaseDatabase.instance.ref("status_user").onValue,
+      builder: (context, snapshot) {
+        String state = "normal";
 
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(22),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.08),
-            blurRadius: 22,
-            offset: const Offset(0, 7),
+        if (snapshot.hasData && snapshot.data!.snapshot.value != null) {
+          final data = snapshot.data!.snapshot.value as Map;
+          state = data["state"]?.toString() ?? "normal";
+        }
+
+        final isMicrosleep = state.toLowerCase() == "microsleep";
+        final chipColor = isMicrosleep ? Colors.red : Colors.green;
+        final chipText =
+            isMicrosleep ? loc.microsleepDetected : loc.normalStatus;
+
+        return Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(22),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.08),
+                blurRadius: 22,
+                offset: const Offset(0, 7),
+              ),
+            ],
           ),
-        ],
-      ),
-      padding: const EdgeInsets.all(20),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              color: mainColor.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: Icon(
-              _isMicrosleep ? LucideIcons.alertTriangle : LucideIcons.shieldCheck,
-              color: mainColor,
-              size: 28,
-            ),
-          ),
-          const SizedBox(width: 16),
-
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  loc.appTitle,
-                  style: const TextStyle(
-                    fontSize: 17,
-                    fontWeight: FontWeight.w700,
-                  ),
+          padding: const EdgeInsets.all(20),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: mainColor.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(16),
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  currentDate,
-                  style: const TextStyle(
-                    fontSize: 12,
-                    color: Colors.black54,
-                  ),
+                child: Icon(
+                  isMicrosleep ? LucideIcons.alertTriangle : LucideIcons.shieldCheck,
+                  color: mainColor,
+                  size: 28,
                 ),
-                const SizedBox(height: 12),
+              ),
+              const SizedBox(width: 16),
 
-                Row(
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 4,
+                    Text(
+                      loc.appTitle,
+                      style: const TextStyle(
+                        fontSize: 17,
+                        fontWeight: FontWeight.w700,
                       ),
-                      decoration: BoxDecoration(
-                        color: chipColor.withOpacity(0.13),
-                        borderRadius: BorderRadius.circular(999),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      currentDate,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: Colors.black54,
                       ),
-                      child: Row(
-                        children: [
-                          Container(
-                            width: 7,
-                            height: 7,
-                            decoration: BoxDecoration(
-                              color: chipColor,
-                              shape: BoxShape.circle,
-                            ),
+                    ),
+                    const SizedBox(height: 12),
+
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 4,
                           ),
-                          const SizedBox(width: 6),
-                          Text(
-                            chipText,
-                            style: TextStyle(
-                              fontSize: 11.5,
-                              fontWeight: FontWeight.w600,
-                              color: chipColor,
-                            ),
+                          decoration: BoxDecoration(
+                            color: chipColor.withOpacity(0.13),
+                            borderRadius: BorderRadius.circular(999),
                           ),
-                        ],
-                      ),
+                          child: Row(
+                            children: [
+                              Container(
+                                width: 7,
+                                height: 7,
+                                decoration: BoxDecoration(
+                                  color: chipColor,
+                                  shape: BoxShape.circle,
+                                ),
+                              ),
+                              const SizedBox(width: 6),
+                              Text(
+                                chipText,
+                                style: TextStyle(
+                                  fontSize: 11.5,
+                                  fontWeight: FontWeight.w600,
+                                  color: chipColor,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 
   // ======================================================
-  // DEVICE STATUS (status)
+  // STATUS DEVICE
   // ======================================================
   Widget _iotStatus() => Padding(
         padding: const EdgeInsets.symmetric(horizontal: 18),
@@ -354,8 +323,7 @@ class _DashboardPageState extends State<DashboardPage> {
 
             if (snapshot.hasData && snapshot.data!.snapshot.value != null) {
               final data = snapshot.data!.snapshot.value as Map;
-
-              gps = data["gps"]?.toString() ?? "OFF";   // opsional
+              gps = data["gps"]?.toString() ?? "OFF";
               iot = data["iot"]?.toString() ?? "off";
               bat = int.tryParse(data["baterai"]?.toString() ?? "0") ?? 0;
             }
@@ -444,7 +412,7 @@ class _DashboardPageState extends State<DashboardPage> {
   }
 
   // ======================================================
-  // MICROSLEEP DURATION (status_user)
+  // DURASI MICROSLEEP (status_user)
   // ======================================================
   Widget _travelStats() => Padding(
         padding: const EdgeInsets.symmetric(horizontal: 18),
@@ -456,7 +424,6 @@ class _DashboardPageState extends State<DashboardPage> {
 
             if (snapshot.hasData && snapshot.data!.snapshot.value != null) {
               final data = snapshot.data!.snapshot.value as Map;
-
               state = data["state"]?.toString() ?? "normal";
               startMillis = int.tryParse(data["timestamp"]?.toString() ?? "0");
             }
@@ -581,22 +548,18 @@ class _DashboardPageState extends State<DashboardPage> {
     final loc = S.of(context);
 
     final snap = await dbState.get();
-
     if (!snap.exists || snap.value.toString() != "microsleep") return;
 
     int? startMillis =
         int.tryParse((await dbTime.get()).value.toString());
 
-    // Reset state ke normal
     await dbState.set("normal");
 
-    // Hitung durasi
     double durasi = 0;
     if (startMillis != null) {
       durasi = (DateTime.now().millisecondsSinceEpoch - startMillis) / 1000;
     }
 
-    // Simpan riwayat
     await dbHistory.push().set({
       "tanggal": DateFormat('dd/MM/yyyy').format(DateTime.now()),
       "jam": DateFormat('HH:mm:ss').format(DateTime.now()),
@@ -645,7 +608,7 @@ class _DashboardPageState extends State<DashboardPage> {
               code.toUpperCase(),
               style: const TextStyle(color: Colors.white),
             ),
-            const Icon(Icons.keyboard_arrow_down, color: Colors.white)
+            const Icon(Icons.keyboard_arrow_down, color: Colors.white),
           ],
         ),
       ),

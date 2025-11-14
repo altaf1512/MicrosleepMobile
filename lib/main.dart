@@ -9,8 +9,9 @@ import 'firebase_options.dart';
 // services
 import 'services/language_service.dart';
 import 'services/microsleep_listener.dart';
+import 'services/notification_service.dart';
 
-// localization (flutter_intl)
+// localization
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'l10n/generated/l10n.dart';
 
@@ -21,16 +22,24 @@ import 'history_page.dart';
 import 'location_page.dart';
 import 'setting_page.dart';
 
-final GlobalKey<_MainNavigationState> mainNavKey =
-    GlobalKey<_MainNavigationState>();
+/// =======================================================
+/// GLOBAL KEY — digunakan overlay dan alarm untuk pindah tab
+/// =======================================================
+final GlobalKey<MainNavigationState> mainNavKey =
+    GlobalKey<MainNavigationState>();
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
+  // Firebase Init
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
 
+  // Init Notifikasi
+  await NotificationService.initialize();
+
+  // Init bahasa
   final languageService = LanguageService();
   await languageService.loadLocale();
 
@@ -52,49 +61,43 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'Microsleep Guard',
-
-      // 🌍 Localization
       locale: lang.currentLocale,
       supportedLocales: S.delegate.supportedLocales,
       localizationsDelegates: const [
-        S.delegate, // <--- PENTING
+        S.delegate,
         GlobalMaterialLocalizations.delegate,
         GlobalWidgetsLocalizations.delegate,
         GlobalCupertinoLocalizations.delegate,
       ],
-
       theme: ThemeData(
         fontFamily: 'Poppins',
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.red),
         useMaterial3: true,
       ),
-
-      home: const SplashScreen(),
+      home: MainNavigation(key: mainNavKey),
     );
   }
 }
 
-// ==========================
-// 🌊 Navigasi Bawah (Main Nav)
-// ==========================
+/// =======================================================
+/// NAVIGASI BAWAH (Curved Navigation Bar)
+/// =======================================================
 class MainNavigation extends StatefulWidget {
   const MainNavigation({super.key});
 
   @override
-  State<MainNavigation> createState() => _MainNavigationState();
+  State<MainNavigation> createState() => MainNavigationState();
 }
 
-class _MainNavigationState extends State<MainNavigation> {
+class MainNavigationState extends State<MainNavigation> {
   int _selectedIndex = 0;
+  final _navKey = GlobalKey<CurvedNavigationBarState>();
 
   late final List<Widget> _pages;
-
-  final GlobalKey<CurvedNavigationBarState> _navKey = GlobalKey();
 
   @override
   void initState() {
     super.initState();
-
     _pages = [
       DashboardPage(onTabSelected: _onTabSelected),
       const LokasiPage(),
@@ -103,12 +106,14 @@ class _MainNavigationState extends State<MainNavigation> {
     ];
   }
 
-  // 👉 Dipanggil dari DashboardPage
   void _onTabSelected(int index) {
     setState(() => _selectedIndex = index);
     _navKey.currentState?.setPage(index);
   }
 
+  /// =======================================================
+  /// Dipanggil overlay alarm → kembali ke Dashboard
+  /// =======================================================
   void switchToDashboard() {
     setState(() => _selectedIndex = 0);
     _navKey.currentState?.setPage(0);
@@ -116,6 +121,7 @@ class _MainNavigationState extends State<MainNavigation> {
 
   @override
   Widget build(BuildContext context) {
+    // Listener Firebase microsleep (jalan di seluruh app)
     MicrosleepListener.start(context);
 
     return Scaffold(
@@ -128,17 +134,13 @@ class _MainNavigationState extends State<MainNavigation> {
         backgroundColor: Colors.transparent,
         color: const Color(0xFFB00000),
         buttonBackgroundColor: const Color(0xFFB00000),
-        animationCurve: Curves.easeInOut,
-        animationDuration: const Duration(milliseconds: 400),
         items: const [
           Icon(LucideIcons.layoutDashboard, size: 28, color: Colors.white),
           Icon(LucideIcons.mapPin, size: 28, color: Colors.white),
           Icon(LucideIcons.history, size: 28, color: Colors.white),
           Icon(LucideIcons.settings, size: 28, color: Colors.white),
         ],
-        onTap: (index) {
-          setState(() => _selectedIndex = index);
-        },
+        onTap: (i) => setState(() => _selectedIndex = i),
       ),
     );
   }

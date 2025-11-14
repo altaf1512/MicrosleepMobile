@@ -1,71 +1,42 @@
 import 'package:flutter/material.dart';
-import 'main.dart'; // supaya bisa akses mainNavKey
+import 'main.dart';
 
 class MicrosleepCallOverlay {
-  static OverlayEntry? _overlayEntry;
-  static bool _isVisible = false;
+  static OverlayEntry? _entry;
+  static bool _visible = false;
 
   static void show({required BuildContext context}) {
-    if (_isVisible) return;
-    _isVisible = true;
+    if (_visible) return;
+    _visible = true;
 
-    _overlayEntry = OverlayEntry(
+    _entry = OverlayEntry(
       builder: (context) => Positioned(
         top: 50,
         left: 16,
         right: 16,
         child: GestureDetector(
           onTap: () {
-            if (mainNavKey.currentState != null) {
-              mainNavKey.currentState!.switchToDashboard();
-            }
+            mainNavKey.currentState?.switchToDashboard();
           },
           child: Material(
             color: Colors.transparent,
             child: Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: Colors.red.shade700,
+                color: Colors.red.shade600,
                 borderRadius: BorderRadius.circular(16),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black26,
-                    blurRadius: 10,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
               ),
               child: Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  const Icon(Icons.warning_amber_rounded,
-                      color: Colors.white, size: 32),
-                  const SizedBox(width: 12),
-                  const Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          "⚠️ Microsleep Terdeteksi!",
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        SizedBox(height: 4),
-                        Text(
-                          "Ketuk untuk kembali ke Dashboard.",
-                          style: TextStyle(
-                            color: Colors.white70,
-                            fontSize: 13,
-                            height: 1.3,
-                          ),
-                        ),
-                      ],
+                children: const [
+                  Icon(Icons.warning_rounded, color: Colors.white, size: 30),
+                  SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      "⚠️ Microsleep Terdeteksi!\nKetuk untuk kembali ke Dashboard.",
+                      style: TextStyle(color: Colors.white),
                     ),
                   ),
-                  const Icon(Icons.chevron_right, color: Colors.white),
+                  Icon(Icons.chevron_right, color: Colors.white)
                 ],
               ),
             ),
@@ -74,19 +45,13 @@ class MicrosleepCallOverlay {
       ),
     );
 
-    // tampilkan global di semua halaman
-    Overlay.of(context, rootOverlay: true)?.insert(_overlayEntry!);
+    Overlay.of(context, rootOverlay: true)?.insert(_entry!);
   }
 
   static void hide() {
-    if (_isVisible) {
-      try {
-        _overlayEntry?.remove();
-      } catch (e) {
-        debugPrint("⚠️ Overlay sudah dihapus sebelumnya: $e");
-      }
-      _overlayEntry = null;
-      _isVisible = false;
-    }
+    if (!_visible) return;
+    _entry?.remove();
+    _entry = null;
+    _visible = false;
   }
 }
