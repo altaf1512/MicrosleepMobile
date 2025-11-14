@@ -14,6 +14,7 @@ class RiwayatPage extends StatefulWidget {
 
 class _RiwayatPageState extends State<RiwayatPage> {
   final mainColor = const Color(0xFFBA0403);
+
   String _searchQuery = "";
   bool _sortDesc = true;
 
@@ -22,15 +23,15 @@ class _RiwayatPageState extends State<RiwayatPage> {
     final loc = S.of(context);
 
     return Scaffold(
-      backgroundColor: Colors.grey[100],
+      backgroundColor: const Color(0xFFF5F6FA),
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _searchAndSortBar(loc),
-              const SizedBox(height: 24),
+              _searchBar(loc),
+              const SizedBox(height: 20),
               _historyStream(loc),
             ],
           ),
@@ -40,35 +41,32 @@ class _RiwayatPageState extends State<RiwayatPage> {
   }
 
   // ===========================================================
-  // 🔍 SEARCH + SORT BAR
+  // SEARCH BAR POLISHED
   // ===========================================================
-  Widget _searchAndSortBar(S loc) {
+  Widget _searchBar(S loc) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.08),
-            blurRadius: 6,
+            color: Colors.black.withOpacity(0.07),
+            blurRadius: 9,
             offset: const Offset(0, 3),
           ),
         ],
       ),
       child: Row(
         children: [
-          const Icon(LucideIcons.search, color: Colors.grey),
-          const SizedBox(width: 8),
+          Icon(LucideIcons.search, color: Colors.grey[600], size: 20),
+          const SizedBox(width: 10),
           Expanded(
             child: TextField(
-              onChanged: (val) => setState(() => _searchQuery = val),
+              onChanged: (value) => setState(() => _searchQuery = value),
               decoration: InputDecoration(
-                hintText: loc.history_search_hint,   // 🔥 FIXED
-                hintStyle: TextStyle(
-                  color: Colors.grey[500],
-                  fontSize: 14,
-                ),
+                hintText: loc.history_search_hint,
+                hintStyle: TextStyle(color: Colors.grey[500], fontSize: 14),
                 border: InputBorder.none,
               ),
             ),
@@ -85,7 +83,8 @@ class _RiwayatPageState extends State<RiwayatPage> {
                 _sortDesc
                     ? LucideIcons.arrowDownWideNarrow
                     : LucideIcons.arrowUpWideNarrow,
-                size: 20,
+                size: 18,
+                color: Colors.black87,
               ),
             ),
           ),
@@ -95,99 +94,107 @@ class _RiwayatPageState extends State<RiwayatPage> {
   }
 
   // ===========================================================
-  // 🔥 HISTORY STREAM
+  // FIREBASE STREAM — POLISHED LAYOUT
   // ===========================================================
   Widget _historyStream(S loc) {
-    final locale = Localizations.localeOf(context).toString(); // 🔥 FIXED
+    final locale = Localizations.localeOf(context).languageCode;
 
     return StreamBuilder(
-      stream: FirebaseDatabase.instance.ref('microsleep_history').onValue,
+      stream: FirebaseDatabase.instance.ref("microsleep_history").onValue,
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
+          return const Padding(
+            padding: EdgeInsets.only(top: 40),
+            child: Center(child: CircularProgressIndicator()),
+          );
         }
 
-        if (!snapshot.hasData || snapshot.data?.snapshot.value == null) {
-          return Center(
-            child: Text(
-              loc.history_no_data,
-              style: const TextStyle(color: Colors.grey),
+        if (!snapshot.hasData || snapshot.data!.snapshot.value == null) {
+          return Padding(
+            padding: const EdgeInsets.only(top: 40),
+            child: Center(
+              child: Text(
+                loc.history_no_data,
+                style: const TextStyle(color: Colors.grey),
+              ),
             ),
           );
         }
 
-        final data =
+        final raw =
             Map<String, dynamic>.from(snapshot.data!.snapshot.value as Map);
 
-        // Convert to list
-        List<Map<String, dynamic>> historyList = data.values.map((e) {
-          return Map<String, dynamic>.from(e);
+        List<Map<String, dynamic>> items = raw.values.map((value) {
+          return Map<String, dynamic>.from(value);
         }).toList();
 
-        // Filter search
+        // Search filter
         if (_searchQuery.isNotEmpty) {
           final q = _searchQuery.toLowerCase();
-          historyList = historyList.where((item) {
-            final lokasi = (item['lokasi'] ?? "").toLowerCase();
-            final tanggal = (item['tanggal'] ?? "").toLowerCase();
-            return lokasi.contains(q) || tanggal.contains(q);
+          items = items.where((e) {
+            return e['lokasi'].toString().toLowerCase().contains(q) ||
+                e['tanggal'].toString().toLowerCase().contains(q);
           }).toList();
         }
 
-        // Sort
-        historyList.sort((a, b) {
-          final da = "${a['tanggal']} ${a['jam']}";
-          final db = "${b['tanggal']} ${b['jam']}";
-          return _sortDesc ? db.compareTo(da) : da.compareTo(db);
+        // Sorting
+        items.sort((a, b) {
+          final tA = "${a['tanggal']} ${a['jam']}";
+          final tB = "${b['tanggal']} ${b['jam']}";
+          return _sortDesc ? tB.compareTo(tA) : tA.compareTo(tB);
         });
 
-        // Group by Month
-        Map<String, List<Map<String, dynamic>>> grouped = {};
-        for (var item in historyList) {
-          try {
-            DateTime t = DateFormat("dd/MM/yyyy").parse(item["tanggal"]);
-            String key = DateFormat("MMMM yyyy", locale).format(t); // 🔥 FIXED
+        // Group By Month
+        Map<String, List<Map<String, dynamic>>> monthGroups = {};
 
-            grouped.putIfAbsent(key, () => []);
-            grouped[key]!.add(item);
+        for (var x in items) {
+          try {
+            DateTime d = DateFormat("dd/MM/yyyy").parse(x["tanggal"]);
+            final monthTitle = DateFormat("MMMM yyyy", locale).format(d);
+
+            monthGroups.putIfAbsent(monthTitle, () => []);
+            monthGroups[monthTitle]!.add(x);
           } catch (_) {}
         }
 
-        List<String> keys = grouped.keys.toList();
-        keys.sort((a, b) {
-          DateTime da = DateFormat("MMMM yyyy", locale).parse(a);  // 🔥 FIXED
-          DateTime db = DateFormat("MMMM yyyy", locale).parse(b);  // 🔥 FIXED
-          return _sortDesc ? db.compareTo(da) : da.compareTo(db);
-        });
+        // Sorted keys
+        final monthKeys = monthGroups.keys.toList()
+          ..sort((a, b) {
+            DateTime da = DateFormat("MMMM yyyy", locale).parse(a);
+            DateTime db = DateFormat("MMMM yyyy", locale).parse(b);
+            return _sortDesc ? db.compareTo(da) : da.compareTo(db);
+          });
 
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
-          children: keys.map((bulanKey) {
+          children: monthKeys.map((month) {
             return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                // Month title
                 Padding(
-                  padding: const EdgeInsets.only(top: 20, bottom: 8),
+                  padding: const EdgeInsets.only(top: 22, bottom: 10),
                   child: Text(
-                    bulanKey,
+                    month,
                     style: const TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w800,
                       color: Colors.black87,
                     ),
                   ),
                 ),
 
-                ...grouped[bulanKey]!.map((item) {
+                // Each item
+                ...monthGroups[month]!.map((item) {
                   return _historyCard(
                     loc: loc,
-                    waktu: item['jam'] ?? "-",
-                    tanggal: item['tanggal'] ?? "-",
-                    lokasi: item['lokasi'] ?? "-",
+                    waktu: item["jam"],
+                    tanggal: item["tanggal"],
+                    lokasi: item["lokasi"],
                     durasi: "${item['durasi']}s",
                     respons: "${item['respons']}s",
                   );
-                })
+                }),
               ],
             );
           }).toList(),
@@ -197,7 +204,7 @@ class _RiwayatPageState extends State<RiwayatPage> {
   }
 
   // ===========================================================
-  // 🎴 HISTORY CARD
+  // HISTORY CARD — POLISHED MATERIAL DESIGN 3
   // ===========================================================
   Widget _historyCard({
     required S loc,
@@ -209,15 +216,15 @@ class _RiwayatPageState extends State<RiwayatPage> {
   }) {
     return Container(
       margin: const EdgeInsets.only(top: 12),
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: mainColor.withOpacity(0.2)),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: mainColor.withOpacity(0.15)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 8,
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 10,
             offset: const Offset(0, 3),
           ),
         ],
@@ -229,51 +236,61 @@ class _RiwayatPageState extends State<RiwayatPage> {
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: mainColor.withOpacity(0.1),
+              color: Colors.red.withOpacity(0.12),
               shape: BoxShape.circle,
             ),
-            child: Icon(LucideIcons.alertTriangle, color: mainColor, size: 26),
+            child: Icon(
+              LucideIcons.alertTriangle,
+              color: mainColor,
+              size: 26,
+            ),
           ),
+
           const SizedBox(width: 14),
 
-          // DETAIL
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(loc.microsleepDetected,
-                    style: TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.bold,
-                      color: mainColor,
-                    )),
-                const SizedBox(height: 3),
-
                 Text(
-                  loc.alarmInstruction,
-                  style: const TextStyle(fontSize: 13, color: Colors.black87),
+                  loc.microsleepDetected,
+                  style: TextStyle(
+                    color: mainColor,
+                    fontSize: 15,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
 
-                const SizedBox(height: 6),
+                const SizedBox(height: 4),
+                Text(
+                  loc.alarmInstruction,
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: Colors.black.withOpacity(0.75),
+                  ),
+                ),
+
+                const SizedBox(height: 10),
 
                 Row(
                   children: [
-                    const Icon(LucideIcons.calendar,
-                        size: 14, color: Colors.grey),
-                    const SizedBox(width: 4),
-                    Text(tanggal,
-                        style:
-                            const TextStyle(color: Colors.grey, fontSize: 12)),
-                    const SizedBox(width: 12),
-                    const Icon(LucideIcons.mapPin,
-                        size: 14, color: Colors.grey),
-                    const SizedBox(width: 4),
+                    Icon(LucideIcons.calendar, size: 14, color: Colors.grey[600]),
+                    const SizedBox(width: 5),
+                    Text(tanggal, style: const TextStyle(fontSize: 12, color: Colors.black54)),
+                  ],
+                ),
+
+                const SizedBox(height: 4),
+
+                Row(
+                  children: [
+                    Icon(LucideIcons.mapPin, size: 14, color: Colors.grey[600]),
+                    const SizedBox(width: 5),
                     Expanded(
                       child: Text(
                         lokasi,
                         overflow: TextOverflow.ellipsis,
-                        style:
-                            const TextStyle(color: Colors.grey, fontSize: 12),
+                        style: const TextStyle(fontSize: 12, color: Colors.black54),
                       ),
                     ),
                   ],
@@ -283,32 +300,29 @@ class _RiwayatPageState extends State<RiwayatPage> {
 
                 Row(
                   children: [
-                    const Icon(LucideIcons.clock,
-                        size: 14, color: Colors.grey),
-                    const SizedBox(width: 4),
+                    Icon(LucideIcons.clock, size: 14, color: Colors.grey[600]),
+                    const SizedBox(width: 5),
                     Text("${loc.history_duration}: $durasi",
-                        style:
-                            const TextStyle(color: Colors.grey, fontSize: 12)),
-                    const SizedBox(width: 12),
-                    const Icon(LucideIcons.activity,
-                        size: 14, color: Colors.grey),
-                    const SizedBox(width: 4),
+                        style: const TextStyle(fontSize: 12, color: Colors.black54)),
+
+                    const SizedBox(width: 14),
+
+                    Icon(LucideIcons.activity, size: 14, color: Colors.grey[600]),
+                    const SizedBox(width: 5),
                     Text("${loc.history_response}: $respons",
-                        style:
-                            const TextStyle(color: Colors.grey, fontSize: 12)),
+                        style: const TextStyle(fontSize: 12, color: Colors.black54)),
                   ],
                 ),
               ],
             ),
           ),
 
-          // JAM
           Text(
             waktu,
             style: const TextStyle(
-              fontSize: 14,
-              color: Colors.black87,
               fontWeight: FontWeight.bold,
+              color: Colors.black87,
+              fontSize: 14,
             ),
           ),
         ],

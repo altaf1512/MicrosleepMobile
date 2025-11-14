@@ -1,19 +1,17 @@
 import 'package:firebase_database/firebase_database.dart';
 import 'package:audioplayers/audioplayers.dart' as ap;
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import 'package:vibration/vibration.dart';     
+import 'package:vibration/vibration.dart';
 import '../microsleep_call_overlay.dart';
 
 class MicrosleepListener {
   static final ap.AudioPlayer _player = ap.AudioPlayer();
+
   static bool _isListening = false;
   static bool _isAlarmPlaying = false;
+  static bool _vibrationActive = false;
 
   static late BuildContext _rootContext;
-
-  // Untuk loop getaran
-  static bool _vibrationActive = false;
 
   static void start(BuildContext context) {
     if (_isListening) return;
@@ -21,14 +19,15 @@ class MicrosleepListener {
 
     _rootContext = context;
 
-    final dbUser = FirebaseDatabase.instance.ref('status/user');
-    final dbStatus = FirebaseDatabase.instance.ref('status');
-    final dbAlarm = FirebaseDatabase.instance.ref('settings/alarm');
+    // 🔥🔥 PATH BENAR SESUAI DATABASE-MU
+    final dbState  = FirebaseDatabase.instance.ref('status_user/state');
+    final dbTime   = FirebaseDatabase.instance.ref('status_user/timestamp');
+    final dbAlarm  = FirebaseDatabase.instance.ref('settings/alarm');
 
-    dbUser.onValue.listen((event) async {
-      final value = event.snapshot.value?.toString().toLowerCase() ?? 'normal';
+    dbState.onValue.listen((event) async {
+      final state = event.snapshot.value?.toString().toLowerCase() ?? 'normal';
 
-      // Ambil setting alarm terbaru
+      // Ambil setting
       final alarmSnap = await dbAlarm.get();
       bool suaraOn = true;
       bool getarOn = true;
@@ -40,77 +39,60 @@ class MicrosleepListener {
       }
 
       // =====================================================
-      // 🔥 MICROSLEEP DIMULAI
+      // 🔥 JIKA MICROSLEEP
       // =====================================================
-      if (value == 'microsleep' && !_isAlarmPlaying) {
+      if (state == "microsleep" && !_isAlarmPlaying) {
         _isAlarmPlaying = true;
 
-        // Simpan timestamp
-        await dbStatus.update({
-          "start_time": DateTime.now().millisecondsSinceEpoch,
-        });
+        // Simpan timestamp microsleep
+        await dbTime.set(DateTime.now().millisecondsSinceEpoch);
 
-        // 🔊 Suara
+        // 🎵 Suara alarm
         if (suaraOn) {
           await _player.stop();
           await _player.setReleaseMode(ap.ReleaseMode.loop);
           await _player.play(ap.AssetSource('sound/alarm.wav'));
         }
 
-        // 📳 Getaran loop
-        if (getarOn) {
-          _startVibrationLoop();
-        }
+        // 📳 Getar
+        if (getarOn) _startVibrationLoop();
 
-        // 🟥 Overlay merah
+        // 🟥 Overlay visual
         MicrosleepCallOverlay.show(context: _rootContext);
       }
 
       // =====================================================
-      // 🟢 NORMAL (hentikan alarm)
+      // 🟢 BALIK NORMAL → STOP ALARM
       // =====================================================
-      else if (value != 'microsleep' && _isAlarmPlaying) {
+      else if (state != "microsleep" && _isAlarmPlaying) {
         await stopAlarm();
       }
     });
   }
 
-  // ============================================================
-  // 📳 GETARAN LOOP — tiap 700ms seperti alarm HP
-  // ============================================================
   static void _startVibrationLoop() async {
     _vibrationActive = true;
 
-    // Pastikan device punya motor getar
-    if (!(await Vibration.hasVibrator() ?? false)) {
-      debugPrint("⚠️ Device tidak mendukung getaran");
-      return;
-    }
+    if (!(await Vibration.hasVibrator() ?? false)) return;
 
     Future.doWhile(() async {
       if (!_vibrationActive) return false;
 
-      // Getar 100ms → delay 600ms → ulang
-      Vibration.vibrate(duration: 100);
-
+      Vibration.vibrate(duration: 150);
       await Future.delayed(const Duration(milliseconds: 700));
+
       return _vibrationActive;
     });
   }
 
-  // ============================================================
-  // 🛑 MATIKAN SEMUA ALARM
-  // ============================================================
   static Future<void> stopAlarm() async {
     try {
       _vibrationActive = false;
-
       await _player.stop();
       _isAlarmPlaying = false;
-
       MicrosleepCallOverlay.hide();
     } catch (e) {
-      debugPrint("❌ Gagal stop alarm: $e");
+      debugPrint("❌ Error stop alarm: $e");
     }
   }
 }

@@ -1,3 +1,7 @@
+// ===========================
+//  PENGATURAN PAGE (FINAL MERGED + STAT LAMA)
+// ===========================
+
 import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:firebase_database/firebase_database.dart';
@@ -35,19 +39,21 @@ class _PengaturanPageState extends State<PengaturanPage> {
     _loadAlarmSettings();
   }
 
+  // ================= USER PROFILE LOAD =================
   Future<void> _loadUserData() async {
     final snapshot = await userRef.get();
     if (!snapshot.exists) return;
 
     final data = Map<String, dynamic>.from(snapshot.value as Map);
     setState(() {
-      nama = data["name"]?.toString();
-      email = data["email"]?.toString();
-      alamat = data["alamat"]?.toString();
+      nama = data["name"];
+      email = data["email"];
+      alamat = data["alamat"];
       umur = int.tryParse(data["umur"].toString());
     });
   }
 
+  // ================= ALARM SETTINGS =================
   Future<void> _loadAlarmSettings() async {
     final snapshot = await alarmRef.get();
     if (!snapshot.exists) return;
@@ -68,6 +74,7 @@ class _PengaturanPageState extends State<PengaturanPage> {
     });
   }
 
+  // ================= UPDATE PROFILE =================
   Future<void> _updateUserData() async {
     await userRef.update({
       "name": nama ?? "-",
@@ -83,13 +90,16 @@ class _PengaturanPageState extends State<PengaturanPage> {
     }
   }
 
-  void _showEditDialog(String label, String currentValue, Function(String) onSave) {
+  // ================= EDIT DIALOG =================
+  void _showEditDialog(
+      String label, String currentValue, Function(String) onSave) {
     final loc = S.of(context);
     final controller = TextEditingController(text: currentValue);
 
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
         title: Text("${loc.edit_title} $label"),
         content: TextField(
           controller: controller,
@@ -114,232 +124,254 @@ class _PengaturanPageState extends State<PengaturanPage> {
     );
   }
 
+  // ================= BUILD =================
   @override
   Widget build(BuildContext context) {
     final loc = S.of(context);
 
     return Scaffold(
-      backgroundColor: Colors.grey[100],
+      backgroundColor: const Color(0xFFF3F5F9),
       body: SafeArea(
         child: Column(
           children: [
-            const SizedBox(height: 10),
-            _tabHeader(loc),
-            const SizedBox(height: 10),
+            const SizedBox(height: 16),
+            _customTopTabs(loc),
+            const SizedBox(height: 16),
             Expanded(
               child: AnimatedSwitcher(
                 duration: const Duration(milliseconds: 300),
                 child: _selectedTab == 0
                     ? _buildProfilTab(loc)
                     : _selectedTab == 1
-                        ? _buildAlarmTab(loc)
+                        ? _buildStatistikTab(loc)
                         : _buildStatistikTab(loc),
               ),
-            )
+            ),
           ],
         ),
       ),
     );
   }
 
-  Widget _tabHeader(S loc) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
+  // ================= TOP TABS FUTURISTIC =================
+  Widget _customTopTabs(S loc) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(40),
+        boxShadow: [
+          BoxShadow(
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: 12,
+              offset: const Offset(0, 4))
+        ],
+      ),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          _tabButton(LucideIcons.user, loc.settings_tab_profile, 0),
-          _tabButton(LucideIcons.bell, loc.settings_tab_alarm, 1),
-          _tabButton(LucideIcons.barChart2, loc.settings_tab_stats, 2),
+          _tabItem(0, LucideIcons.user, loc.settings_tab_profile),
+          _tabItem(1, LucideIcons.barChart2, loc.settings_tab_stats),
         ],
       ),
     );
   }
 
-  Widget _tabButton(IconData icon, String text, int index) {
-    final active = _selectedTab == index;
+  Widget _tabItem(int index, IconData icon, String label) {
+    bool active = _selectedTab == index;
 
-    return GestureDetector(
-      onTap: () => setState(() => _selectedTab = index),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 18),
-        decoration: BoxDecoration(
-          color: active ? mainColor : Colors.white,
-          borderRadius: BorderRadius.circular(30),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.08),
-              blurRadius: 6,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Row(
-          children: [
-            Icon(icon, size: 18, color: active ? Colors.white : mainColor),
-            const SizedBox(width: 6),
-            Text(
-              text,
-              style: TextStyle(
-                color: active ? Colors.white : Colors.black87,
-                fontWeight: FontWeight.w600,
+    return Expanded(
+      child: GestureDetector(
+        onTap: () => setState(() => _selectedTab = index),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 250),
+          padding: const EdgeInsets.symmetric(vertical: 10),
+          decoration: BoxDecoration(
+            color: active ? mainColor : Colors.transparent,
+            borderRadius: BorderRadius.circular(30),
+          ),
+          child: Column(
+            children: [
+              Icon(icon, size: 20, color: active ? Colors.white : Colors.black54),
+              const SizedBox(height: 4),
+              Text(
+                label,
+                style: TextStyle(
+                  color: active ? Colors.white : Colors.black87,
+                  fontSize: 13,
+                  fontWeight: active ? FontWeight.bold : FontWeight.w500,
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
   }
 
-  // ========== PROFIL ==========
+  // ================= PROFILE TAB =================
   Widget _buildProfilTab(S loc) {
     if (nama == null) {
       return const Center(child: CircularProgressIndicator());
     }
 
     return SingleChildScrollView(
-      key: const ValueKey("profil"),
       padding: const EdgeInsets.all(16),
       child: Column(
         children: [
-          _profileCard(),
+          // --- Profile Card ---
+          _glassCard(
+            child: Row(
+              children: [
+                CircleAvatar(
+                  radius: 36,
+                  backgroundColor: mainColor,
+                  child: const Icon(LucideIcons.user, color: Colors.white, size: 30),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(nama ?? "-",
+                          style: const TextStyle(
+                              fontSize: 20, fontWeight: FontWeight.bold)),
+                      Text(email ?? "-",
+                          style: const TextStyle(color: Colors.black54)),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          const SizedBox(height: 18),
+
+          // --- Detail Profile ---
+          _glassCard(
+            child: Column(
+              children: [
+                _editableRow(loc.profile_name, nama ?? "-", (v) => nama = v),
+                _divider(),
+                _editableRow(loc.profile_email, email ?? "-", (v) => email = v),
+                _divider(),
+                _editableRow(loc.profile_address, alamat ?? "-", (v) => alamat = v),
+                _divider(),
+                _editableRow(loc.profile_age, umur?.toString() ?? "-", (v) {
+                  umur = int.tryParse(v) ?? 0;
+                }),
+              ],
+            ),
+          ),
+
           const SizedBox(height: 20),
-          _profileInfoCard(loc),
+
+          // ================= ALARM MERGED HERE =================
+          _glassCard(
+            child: Column(
+              children: [
+                _switchRow(
+                  loc.alarm_sound,
+                  loc.alarm_sound_desc,
+                  suara,
+                  (v) {
+                    suara = v;
+                    setState(() {});
+                    _updateAlarmSettings();
+                  },
+                  LucideIcons.volume2,
+                ),
+                _divider(),
+                _switchRow(
+                  loc.alarm_vibration,
+                  loc.alarm_vibration_desc,
+                  getar,
+                  (v) {
+                    getar = v;
+                    setState(() {});
+                    _updateAlarmSettings();
+                  },
+                  LucideIcons.vibrate,
+                ),
+                _divider(),
+                _switchRow(
+                  loc.alarm_tracking,
+                  loc.alarm_tracking_desc,
+                  lokasi,
+                  (v) {
+                    lokasi = v;
+                    setState(() {});
+                    _updateAlarmSettings();
+                  },
+                  LucideIcons.mapPin,
+                ),
+              ],
+            ),
+          ),
         ],
       ),
     );
   }
 
-  Widget _profileCard() {
-    return Container(
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(18),
-        boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.08), blurRadius: 8)
-        ],
+  Widget _editableRow(
+      String label, String value, Function(String) onEdit) {
+    return InkWell(
+      onTap: () => _showEditDialog(label, value, onEdit),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(label, style: const TextStyle(color: Colors.black54)),
+            Row(
+              children: [
+                Text(value, style: const TextStyle(fontWeight: FontWeight.bold)),
+                const SizedBox(width: 8),
+                const Icon(Icons.edit, color: Colors.grey, size: 18),
+              ],
+            ),
+          ],
+        ),
       ),
+    );
+  }
+
+  Widget _switchRow(String title, String subtitle, bool value,
+      Function(bool) onChanged, IconData icon) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 12),
       child: Row(
         children: [
-          CircleAvatar(
-            radius: 38,
-            backgroundColor: mainColor,
-            child: const Icon(LucideIcons.user, color: Colors.white, size: 36),
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: mainColor.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(icon, color: mainColor),
           ),
-          const SizedBox(width: 16),
+          const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(nama ?? "-", style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                Text(email ?? "-", style: const TextStyle(color: Colors.grey)),
+                Text(title,
+                    style: const TextStyle(fontWeight: FontWeight.bold)),
+                Text(subtitle,
+                    style: const TextStyle(color: Colors.black54)),
               ],
             ),
+          ),
+          Switch(
+            value: value,
+            activeColor: mainColor,
+            onChanged: onChanged,
           ),
         ],
       ),
     );
   }
 
-  Widget _profileInfoCard(S loc) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16)),
-      child: Column(
-        children: [
-          _editableInfoItem(loc.profile_name, nama ?? "-", (v) => nama = v),
-          _editableInfoItem(loc.profile_email, email ?? "-", (v) => email = v),
-          _editableInfoItem(loc.profile_address, alamat ?? "-", (v) => alamat = v),
-          _editableInfoItem(loc.profile_age, umur?.toString() ?? "-", (v) => umur = int.tryParse(v) ?? 0),
-        ],
-      ),
-    );
-  }
-
-  Widget _editableInfoItem(String label, String value, Function(String) onEdit) {
-    return InkWell(
-      onTap: () => _showEditDialog(label, value, onEdit),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 10),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(label, style: const TextStyle(color: Colors.grey)),
-            Row(
-              children: [
-                Text(value, style: const TextStyle(fontWeight: FontWeight.w600)),
-                const SizedBox(width: 8),
-                const Icon(Icons.edit, size: 16, color: Colors.grey),
-              ],
-            )
-          ],
-        ),
-      ),
-    );
-  }
-
-  // ========== ALARM ==========
-  Widget _buildAlarmTab(S loc) {
-    return SingleChildScrollView(
-      key: const ValueKey("alarm"),
-      padding: const EdgeInsets.all(16),
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16)),
-        child: Column(
-          children: [
-            _switchItem(loc.alarm_sound, loc.alarm_sound_desc, suara, (v) {
-              suara = v;
-              setState(() {});
-              _updateAlarmSettings();
-            }),
-            _switchItem(loc.alarm_vibration, loc.alarm_vibration_desc, getar, (v) {
-              getar = v;
-              setState(() {});
-              _updateAlarmSettings();
-            }),
-            _switchItem(loc.alarm_tracking, loc.alarm_tracking_desc, lokasi, (v) {
-              lokasi = v;
-              setState(() {});
-              _updateAlarmSettings();
-            }),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _switchItem(String title, String subtitle, bool value, Function(bool) onChanged) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Row(children: [
-            Icon(LucideIcons.bell, color: mainColor),
-            const SizedBox(width: 10),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
-                Text(subtitle, style: const TextStyle(color: Colors.grey)),
-              ],
-            ),
-          ]),
-          Switch(
-            value: value,
-            activeColor: mainColor,
-            onChanged: onChanged,
-          )
-        ],
-      ),
-    );
-  }
-
-  // ========== STATISTIK ==========
+  // ================= STATISTIK TAB (VERSI LAMA TEAM) =================
   Widget _buildStatistikTab(S loc) {
     return StreamBuilder(
       stream: FirebaseDatabase.instance.ref().onValue,
@@ -355,8 +387,8 @@ class _PengaturanPageState extends State<PengaturanPage> {
           totalJamMonitoring = data["status"]?["waktu"]?.toString() ?? "0";
 
           if (data["microsleep_history"] != null) {
-            final history = Map<String, dynamic>.from(data["microsleep_history"] as Map);
-
+            final history =
+                Map<String, dynamic>.from(data["microsleep_history"]);
             totalInsiden = history.length;
             streakBebasInsiden = _hitungStreak(history);
             peningkatanBulanIni = _hitungPeningkatan(history);
@@ -370,8 +402,12 @@ class _PengaturanPageState extends State<PengaturanPage> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(loc.stats_title,
-                  style: TextStyle(color: mainColor, fontWeight: FontWeight.bold, fontSize: 16)),
-              Text(loc.stats_subtitle, style: const TextStyle(color: Colors.grey)),
+                  style: TextStyle(
+                      color: mainColor,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16)),
+              Text(loc.stats_subtitle,
+                  style: const TextStyle(color: Colors.grey)),
               const SizedBox(height: 16),
 
               GridView.count(
@@ -406,11 +442,66 @@ class _PengaturanPageState extends State<PengaturanPage> {
                     color: Colors.teal[50],
                   ),
                 ],
-              )
+              ),
             ],
           ),
         );
       },
+    );
+  }
+
+  Widget _statCard({
+    required IconData icon,
+    required String value,
+    required String label,
+    required Color? color,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: color,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, color: mainColor, size: 24),
+          const SizedBox(height: 10),
+          Text(value,
+              style:
+                  const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+          Text(label,
+              style: const TextStyle(fontSize: 13, color: Colors.black54)),
+        ],
+      ),
+    );
+  }
+
+  // ================= UTILS =================
+  Widget _glassCard({required Widget child}) {
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.9),
+        borderRadius: BorderRadius.circular(22),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.07),
+            blurRadius: 20,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: child,
+    );
+  }
+
+  Widget _divider() {
+    return Container(
+      height: 1,
+      width: double.infinity,
+      color: Colors.black12,
+      margin: const EdgeInsets.symmetric(vertical: 6),
     );
   }
 
@@ -464,29 +555,5 @@ class _PengaturanPageState extends State<PengaturanPage> {
       return bulanIni > 0 ? 100 : 0;
     }
     return ((bulanIni - bulanLalu) / bulanLalu) * 100;
-  }
-
-  Widget _statCard({
-    required IconData icon,
-    required String value,
-    required String label,
-    required Color? color,
-  }) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: color,
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(icon, color: mainColor, size: 24),
-          const SizedBox(height: 10),
-          Text(value, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
-          Text(label, style: const TextStyle(fontSize: 13, color: Colors.black54)),
-        ],
-      ),
-    );
   }
 }
