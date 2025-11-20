@@ -59,10 +59,18 @@ class _PengaturanPageState extends State<PengaturanPage> {
     if (!snapshot.exists) return;
 
     final data = Map<String, dynamic>.from(snapshot.value as Map);
+
+    bool toBool(dynamic v) {
+      if (v == true) return true;
+      if (v == "true") return true;
+      if (v == 1) return true;
+      return false;
+    }
+
     setState(() {
-      suara = data["suara"] ?? true;
-      getar = data["getar"] ?? true;
-      lokasi = data["lokasi"] ?? true;
+      suara = toBool(data["suara"]);
+      getar = toBool(data["getar"]);
+      lokasi = toBool(data["lokasi"]);
     });
   }
 
@@ -218,7 +226,6 @@ class _PengaturanPageState extends State<PengaturanPage> {
       padding: const EdgeInsets.all(16),
       child: Column(
         children: [
-          // --- Profile Card ---
           _glassCard(
             child: Row(
               children: [
@@ -246,7 +253,6 @@ class _PengaturanPageState extends State<PengaturanPage> {
 
           const SizedBox(height: 18),
 
-          // --- Detail Profile ---
           _glassCard(
             child: Column(
               children: [
@@ -312,8 +318,7 @@ class _PengaturanPageState extends State<PengaturanPage> {
     );
   }
 
-  Widget _editableRow(
-      String label, String value, Function(String) onEdit) {
+  Widget _editableRow(String label, String value, Function(String) onEdit) {
     return InkWell(
       onTap: () => _showEditDialog(label, value, onEdit),
       child: Padding(

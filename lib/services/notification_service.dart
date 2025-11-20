@@ -9,59 +9,66 @@ class NotificationService {
   // INITIALIZE
   // ======================================================
   static Future<void> initialize() async {
-    // --- MINTA IZIN ANDROID 13+ ---
     await requestPermission();
 
     const androidInit = AndroidInitializationSettings('@mipmap/ic_launcher');
     const settings = InitializationSettings(android: androidInit);
-
-    // Init plugin
     await _plugin.initialize(settings);
 
-    // CHANNEL UNTUK ALARM
-    const channel = AndroidNotificationChannel(
-      'microsleep_channel',
-      'Microsleep Alarm',
-      description: 'Channel untuk alarm microsleep',
-      importance: Importance.max,
-      playSound: true,
-      sound: RawResourceAndroidNotificationSound('alarm'), // alarm.mp3
-    );
-
-    // DAFTARKAN CHANNEL
     final androidPlatform =
         _plugin.resolvePlatformSpecificImplementation<
             AndroidFlutterLocalNotificationsPlugin>();
 
-    await androidPlatform?.createNotificationChannel(channel);
+    // ========== CHANNEL BERSUARA ==========
+    const channelSound = AndroidNotificationChannel(
+      'microsleep_sound',
+      'Microsleep Alarm (Suara)',
+      description: 'Alarm dengan bunyi',
+      importance: Importance.max,
+      playSound: true,
+      sound: RawResourceAndroidNotificationSound('alarm'),
+    );
+
+    // ========== CHANNEL TANPA SUARA ==========
+    const channelSilent = AndroidNotificationChannel(
+      'microsleep_silent',
+      'Microsleep Alarm (Silent)',
+      description: 'Alarm tanpa suara',
+      importance: Importance.max,
+      playSound: false,
+    );
+
+    await androidPlatform?.createNotificationChannel(channelSound);
+    await androidPlatform?.createNotificationChannel(channelSilent);
   }
 
   // ======================================================
-  // IZIN NOTIFIKASI (ANDROID 13+)
+  // IZIN NOTIFIKASI ANDROID 13+
   // ======================================================
   static Future<void> requestPermission() async {
     final status = await Permission.notification.status;
-
     if (!status.isGranted) {
       await Permission.notification.request();
     }
   }
 
   // ======================================================
-  // SHOW ALARM
+  // SHOW MICROSLEEP ALERT
   // ======================================================
   static Future<void> showMicrosleepAlert({required bool soundOn}) async {
+    final channelId = soundOn ? 'microsleep_sound' : 'microsleep_silent';
+
     final android = AndroidNotificationDetails(
-      'microsleep_channel',
-      'Microsleep Alarm',
-      channelDescription: 'Notifikasi alarm microsleep',
+      channelId,
+      soundOn ? 'Microsleep Alarm (Suara)' : 'Microsleep Alarm (Silent)',
+      channelDescription:
+          soundOn ? 'Alarm berbunyi' : 'Alarm tanpa suara',
       importance: Importance.max,
       priority: Priority.high,
       fullScreenIntent: true,
       playSound: soundOn,
       ongoing: true,
       autoCancel: false,
-      sound: soundOn ? RawResourceAndroidNotificationSound('alarm') : null,
     );
 
     await _plugin.show(

@@ -5,6 +5,7 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:firebase_database/firebase_database.dart';
+import 'package:geolocator/geolocator.dart';
 
 import 'l10n/generated/l10n.dart';
 
@@ -19,6 +20,7 @@ class _LokasiPageState extends State<LokasiPage> {
   GoogleMapController? mapController;
   final LatLng _defaultCenter = const LatLng(-8.1726, 113.6995);
 
+  // Firebase Vehicle Node
   final DatabaseReference _vehicleRef =
       FirebaseDatabase.instance.ref('vehicle');
 
@@ -26,10 +28,14 @@ class _LokasiPageState extends State<LokasiPage> {
   double _firebaseSpeed = 0.0;
   String? _lastUpdateTime;
 
-  final mainColor = const Color(0xFFBA0403);
-  bool _isMapView = true;
+  // HANDSET LOCATION (TITIK ANDA)
+  LatLng? _myPosition;
 
-  // Rest Area (tanpa translate dinamis)
+  bool _isMapView = true;
+  final mainColor = const Color(0xFFBA0403);
+
+  int _lastMove = 0; // throttle camera move
+
   final List<Map<String, String>> _restAreas = [
     {
       "name": "restarea_1",
@@ -53,8 +59,38 @@ class _LokasiPageState extends State<LokasiPage> {
     super.initState();
     _initNotifications();
     _listenToFirebaseVehicle();
+    _initMyLocation();
   }
 
+  // ============================================================
+  // 1. AMBIL LOKASI HANDSET (MY LOCATION)
+  // ============================================================
+  Future<void> _initMyLocation() async {
+    await Geolocator.requestPermission();
+
+    final pos = await Geolocator.getCurrentPosition();
+    setState(() {
+      _myPosition = LatLng(pos.latitude, pos.longitude);
+    });
+  }
+
+  // Untuk update realtime handset location (pergerakan user)
+  StreamSubscription<Position>? _positionStream;
+
+  void _trackMyLocation() {
+    const settings = LocationSettings(accuracy: LocationAccuracy.high);
+
+    _positionStream = Geolocator.getPositionStream(locationSettings: settings)
+        .listen((Position p) {
+      setState(() {
+        _myPosition = LatLng(p.latitude, p.longitude);
+      });
+    });
+  }
+
+  // ============================================================
+  // 2. NOTIFICATION INIT
+  // ============================================================
   Future<void> _initNotifications() async {
     const androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
     const settings = InitializationSettings(android: androidSettings);
@@ -70,17 +106,21 @@ class _LokasiPageState extends State<LokasiPage> {
       playSound: true,
       sound: RawResourceAndroidNotificationSound('alarm'),
     );
-    const details = NotificationDetails(android: androidDetails);
-    await _notifications.show(0, title, body, details);
+    const notif = NotificationDetails(android: androidDetails);
+    await _notifications.show(0, title, body, notif);
   }
 
+  // ============================================================
+  // 3. LISTEN FIREBASE VEHICLE
+  // ============================================================
   void _listenToFirebaseVehicle() {
     _vehicleRef.onValue.listen((event) {
       final data = event.snapshot.value as Map?;
       if (data != null && mounted) {
-        final lat = (data['latitude'] ?? 0.0) as double;
-        final lon = (data['longitude'] ?? 0.0) as double;
-        final spd = (data['speed'] ?? 0.0) as double;
+        // SAFE PARSE
+        final lat = double.tryParse(data['latitude'].toString()) ?? 0.0;
+        final lon = double.tryParse(data['longitude'].toString()) ?? 0.0;
+        final spd = double.tryParse(data['speed'].toString()) ?? 0.0;
 
         final now = DateTime.now();
         final formatted =
@@ -92,7 +132,10 @@ class _LokasiPageState extends State<LokasiPage> {
           _lastUpdateTime = formatted;
         });
 
-        if (mapController != null) {
+        // ============= THROTTLE CAMERA UPDATE ================
+        final t = DateTime.now().millisecondsSinceEpoch;
+        if (mapController != null && t - _lastMove > 1500) {
+          _lastMove = t;
           mapController!.animateCamera(
             CameraUpdate.newCameraPosition(
               CameraPosition(target: LatLng(lat, lon), zoom: 16),
@@ -103,10 +146,25 @@ class _LokasiPageState extends State<LokasiPage> {
     });
   }
 
+  // ============================================================
+  // 4. GOOGLE MAP CREATED
+  // ============================================================
   void _onMapCreated(GoogleMapController controller) {
     mapController = controller;
+
+    // Start tracking handset position
+    _trackMyLocation();
   }
 
+  @override
+  void dispose() {
+    _positionStream?.cancel();
+    super.dispose();
+  }
+
+  // ============================================================
+  //                UI BUILD STARTS HERE
+  // ============================================================
   @override
   Widget build(BuildContext context) {
     final loc = S.of(context);
@@ -125,6 +183,8 @@ class _LokasiPageState extends State<LokasiPage> {
                 child: _isMapView ? _buildMapView(loc) : _buildListView(loc),
               ),
             ),
+
+            // TEST ALARM BUTTON
             Padding(
               padding: const EdgeInsets.all(12),
               child: ElevatedButton.icon(
@@ -133,16 +193,12 @@ class _LokasiPageState extends State<LokasiPage> {
                   loc.location_alarm_body,
                 ),
                 icon: const Icon(Icons.alarm, color: Colors.white),
-                label: Text(
-                  loc.location_alarm_test,
-                  style: const TextStyle(color: Colors.white),
-                ),
+                label: Text(loc.location_alarm_test,
+                    style: const TextStyle(color: Colors.white)),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: mainColor,
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
                 ),
               ),
             ),
@@ -152,11 +208,14 @@ class _LokasiPageState extends State<LokasiPage> {
     );
   }
 
-  // 🔍 Search Bar
+  // ============================================================
+  // SEARCH BAR
+  // ============================================================
   Widget _buildSearchBar(S loc) {
     return Padding(
       padding: const EdgeInsets.all(16),
       child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(14),
@@ -168,7 +227,6 @@ class _LokasiPageState extends State<LokasiPage> {
             ),
           ],
         ),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         child: Row(
           children: [
             const Icon(LucideIcons.search, color: Colors.grey),
@@ -178,7 +236,6 @@ class _LokasiPageState extends State<LokasiPage> {
                 decoration: InputDecoration(
                   hintText: loc.location_search_hint,
                   border: InputBorder.none,
-                  hintStyle: TextStyle(color: Colors.grey[500], fontSize: 14),
                 ),
               ),
             ),
@@ -189,6 +246,9 @@ class _LokasiPageState extends State<LokasiPage> {
     );
   }
 
+  // ============================================================
+  // TOGGLE BUTTONS
+  // ============================================================
   Widget _buildToggleButtons(S loc) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -197,21 +257,14 @@ class _LokasiPageState extends State<LokasiPage> {
           Expanded(
             child: ElevatedButton.icon(
               onPressed: () => setState(() => _isMapView = true),
-              icon: Icon(
-                LucideIcons.map,
-                color: _isMapView ? Colors.white : mainColor,
-              ),
-              label: Text(
-                loc.location_tab_map,
-                style: TextStyle(color: _isMapView ? Colors.white : mainColor),
-              ),
+              icon: Icon(LucideIcons.map,
+                  color: _isMapView ? Colors.white : mainColor),
+              label: Text(loc.location_tab_map,
+                  style: TextStyle(
+                      color: _isMapView ? Colors.white : mainColor)),
               style: ElevatedButton.styleFrom(
                 backgroundColor: _isMapView ? mainColor : Colors.white,
                 side: BorderSide(color: mainColor),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                padding: const EdgeInsets.symmetric(vertical: 10),
               ),
             ),
           ),
@@ -219,21 +272,14 @@ class _LokasiPageState extends State<LokasiPage> {
           Expanded(
             child: ElevatedButton.icon(
               onPressed: () => setState(() => _isMapView = false),
-              icon: Icon(
-                LucideIcons.list,
-                color: !_isMapView ? Colors.white : mainColor,
-              ),
-              label: Text(
-                loc.location_tab_list,
-                style: TextStyle(color: !_isMapView ? Colors.white : mainColor),
-              ),
+              icon: Icon(LucideIcons.list,
+                  color: !_isMapView ? Colors.white : mainColor),
+              label: Text(loc.location_tab_list,
+                  style: TextStyle(
+                      color: !_isMapView ? Colors.white : mainColor)),
               style: ElevatedButton.styleFrom(
                 backgroundColor: !_isMapView ? mainColor : Colors.white,
                 side: BorderSide(color: mainColor),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                padding: const EdgeInsets.symmetric(vertical: 10),
               ),
             ),
           ),
@@ -242,29 +288,45 @@ class _LokasiPageState extends State<LokasiPage> {
     );
   }
 
-  // 🗺️ Map View
+  // ============================================================
+  // MAP VIEW (DENGAN TITIK KAMU SENDIRI!)
+  // ============================================================
   Widget _buildMapView(S loc) {
     return Stack(
       children: [
         kIsWeb
-            ? Center(child: Text("Web not supported"))
+            ? const Center(child: Text("Web not supported"))
             : GoogleMap(
                 onMapCreated: _onMapCreated,
                 initialCameraPosition:
                     CameraPosition(target: _defaultCenter, zoom: 14),
+
+                myLocationEnabled: true,   // TIKTIK KAMU
+                myLocationButtonEnabled: true,
+
                 zoomControlsEnabled: true,
                 markers: {
+                  // Marker Lokasi Firebase Vehicle
                   if (_firebaseVehiclePosition != null)
                     Marker(
-                      markerId: const MarkerId('lokasiAnda'),
+                      markerId: const MarkerId('vehicle'),
                       position: _firebaseVehiclePosition!,
                       icon: BitmapDescriptor.defaultMarkerWithHue(
                           BitmapDescriptor.hueBlue),
                     ),
+
+                  // Marker Lokasi Handset Kamu
+                  if (_myPosition != null)
+                    Marker(
+                      markerId: const MarkerId('myLocation'),
+                      position: _myPosition!,
+                      icon: BitmapDescriptor.defaultMarkerWithHue(
+                          BitmapDescriptor.hueRed),
+                    ),
                 },
               ),
 
-        // Info Panel
+        // PANEL INFO
         Positioned(
           top: 12,
           left: 12,
@@ -274,41 +336,23 @@ class _LokasiPageState extends State<LokasiPage> {
             decoration: BoxDecoration(
               color: Colors.white.withOpacity(0.95),
               borderRadius: BorderRadius.circular(14),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.1),
-                  blurRadius: 6,
-                  offset: const Offset(0, 3),
-                ),
-              ],
             ),
             child: _firebaseVehiclePosition == null
-                ? Text(
-                    loc.location_waiting_data,
-                    style: const TextStyle(color: Colors.grey),
-                  )
+                ? Text(loc.location_waiting_data)
                 : Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        "🌍 ${loc.location_panel_title}",
-                        style: const TextStyle(
-                            fontWeight: FontWeight.bold, fontSize: 15),
-                      ),
-                      const SizedBox(height: 6),
+                      Text("🌍 ${loc.location_panel_title}",
+                          style: const TextStyle(
+                              fontWeight: FontWeight.bold, fontSize: 15)),
                       Text(
                           "${loc.location_latitude}: ${_firebaseVehiclePosition!.latitude.toStringAsFixed(6)}"),
                       Text(
                           "${loc.location_longitude}: ${_firebaseVehiclePosition!.longitude.toStringAsFixed(6)}"),
                       Text("${loc.location_speed}: ${_firebaseSpeed.toStringAsFixed(1)} km/h"),
-                      const SizedBox(height: 6),
-                      Text(
-                        "${loc.location_last_update} ${_lastUpdateTime ?? '--:--:--'}",
-                        style: const TextStyle(
-                          fontStyle: FontStyle.italic,
-                          color: Colors.grey,
-                        ),
-                      ),
+                      Text("${loc.location_last_update} ${_lastUpdateTime ?? '--:--:--'}",
+                          style:
+                              const TextStyle(color: Colors.grey, fontStyle: FontStyle.italic)),
                     ],
                   ),
           ),
@@ -317,7 +361,9 @@ class _LokasiPageState extends State<LokasiPage> {
     );
   }
 
-  // 📋 List View
+  // ============================================================
+  // LIST VIEW
+  // ============================================================
   Widget _buildListView(S loc) {
     return ListView.builder(
       padding: const EdgeInsets.all(16),
@@ -330,81 +376,48 @@ class _LokasiPageState extends State<LokasiPage> {
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(16),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.05),
-                blurRadius: 6,
-                offset: const Offset(0, 3),
-              ),
-            ],
           ),
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               ClipRRect(
                 borderRadius:
                     const BorderRadius.vertical(top: Radius.circular(16)),
-                child: Image.network(
-                  area['image']!,
-                  height: 160,
-                  width: double.infinity,
-                  fit: BoxFit.cover,
-                ),
+                child: Image.network(area['image']!,
+                    height: 160, width: double.infinity, fit: BoxFit.cover),
               ),
-
               Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                padding: const EdgeInsets.all(16),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      area['name'] == "restarea_1"
-                          ? loc.restarea_1
-                          : loc.restarea_2,
-                      style: TextStyle(
-                          fontWeight: FontWeight.bold, color: mainColor),
-                    ),
-
+                    Text(area['name'] == "restarea_1"
+                        ? loc.restarea_1
+                        : loc.restarea_2),
+                    Text(loc.restarea_type),
                     const SizedBox(height: 4),
-                    Text(
-                      loc.restarea_type,
-                      style: const TextStyle(color: Colors.black54),
-                    ),
-
-                    const SizedBox(height: 6),
                     Row(
                       children: [
                         const Icon(LucideIcons.clock,
                             size: 14, color: Colors.grey),
                         const SizedBox(width: 4),
-                        Text(
-                          loc.restarea_24hours,
-                          style: const TextStyle(fontSize: 12),
-                        ),
+                        Text(loc.restarea_24hours,
+                            style: const TextStyle(fontSize: 12)),
                       ],
                     ),
-
                     const SizedBox(height: 6),
                     Wrap(
                       spacing: 10,
-                      runSpacing: 4,
                       children: [
-                        Text(loc.facility_toilet,
-                            style: const TextStyle(color: Colors.black54)),
-                        Text(loc.facility_food,
-                            style: const TextStyle(color: Colors.black54)),
-                        Text(loc.facility_parking,
-                            style: const TextStyle(color: Colors.black54)),
-                        Text(loc.facility_fuel,
-                            style: const TextStyle(color: Colors.black54)),
-                        Text(loc.facility_atm,
-                            style: const TextStyle(color: Colors.black54)),
+                        Text(loc.facility_toilet),
+                        Text(loc.facility_food),
+                        Text(loc.facility_parking),
+                        Text(loc.facility_fuel),
+                        Text(loc.facility_atm),
                       ],
                     ),
                   ],
                 ),
-              ),
+              )
             ],
           ),
         );
