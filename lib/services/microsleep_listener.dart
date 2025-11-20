@@ -18,22 +18,36 @@ class MicrosleepListener {
 
     dbState.onValue.listen((event) async {
       final state = event.snapshot.value?.toString().toLowerCase() ?? "normal";
+
+      // Ambil pengaturan alarm
       final alarmSnap = await dbAlarm.get();
+      final soundOn = alarmSnap.child("suara").value == true;
+      final vibrateOn = alarmSnap.child("getar").value == true;
 
-      bool soundOn = alarmSnap.child("suara").value == true;
-      bool vibrateOn = alarmSnap.child("getar").value == true;
-
+      // ====================================================
+      // MASUK MICROSLEEP → NYALAKAN ALARM
+      // ====================================================
       if (state == "microsleep" && !_isAlarm) {
         _isAlarm = true;
 
-        NotificationService.showMicrosleepAlert(soundOn: soundOn);
+        // Notifikasi (bunyi + fullscreen)
+        await NotificationService.showMicrosleepAlert(soundOn: soundOn);
+
+        // Overlay
         MicrosleepCallOverlay.show(context: context);
 
-        if (vibrateOn) Vibration.vibrate(duration: 300);
+        // Getar
+        if (vibrateOn) {
+          Vibration.vibrate(duration: 400);
+        }
       }
 
+      // ====================================================
+      // KELUAR NORMAL → MATIKAN SEMUA
+      // ====================================================
       if (state != "microsleep" && _isAlarm) {
         _isAlarm = false;
+
         NotificationService.stop();
         MicrosleepCallOverlay.hide();
         Vibration.cancel();

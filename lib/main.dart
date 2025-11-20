@@ -16,7 +16,6 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'l10n/generated/l10n.dart';
 
 // pages
-import 'splash_screen.dart';
 import 'dashboard_page.dart';
 import 'history_page.dart';
 import 'location_page.dart';
@@ -36,10 +35,10 @@ Future<void> main() async {
     options: DefaultFirebaseOptions.currentPlatform,
   );
 
-  // Init Notifikasi
+  // Init Notification
   await NotificationService.initialize();
 
-  // Init bahasa
+  // Init Bahasa
   final languageService = LanguageService();
   await languageService.loadLocale();
 
@@ -60,7 +59,10 @@ class MyApp extends StatelessWidget {
 
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      title: 'Microsleep Guard',
+
+      // **Fixed: hilangkan label Microsleep Guard**
+      title: '',
+
       locale: lang.currentLocale,
       supportedLocales: S.delegate.supportedLocales,
       localizationsDelegates: const [
@@ -69,11 +71,13 @@ class MyApp extends StatelessWidget {
         GlobalWidgetsLocalizations.delegate,
         GlobalCupertinoLocalizations.delegate,
       ],
+
       theme: ThemeData(
         fontFamily: 'Poppins',
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.red),
         useMaterial3: true,
       ),
+
       home: MainNavigation(key: mainNavKey),
     );
   }
@@ -98,6 +102,7 @@ class MainNavigationState extends State<MainNavigation> {
   @override
   void initState() {
     super.initState();
+
     _pages = [
       DashboardPage(onTabSelected: _onTabSelected),
       const LokasiPage(),
@@ -111,9 +116,7 @@ class MainNavigationState extends State<MainNavigation> {
     _navKey.currentState?.setPage(index);
   }
 
-  /// =======================================================
   /// Dipanggil overlay alarm → kembali ke Dashboard
-  /// =======================================================
   void switchToDashboard() {
     setState(() => _selectedIndex = 0);
     _navKey.currentState?.setPage(0);
@@ -127,6 +130,7 @@ class MainNavigationState extends State<MainNavigation> {
     return Scaffold(
       extendBody: true,
       body: _pages[_selectedIndex],
+
       bottomNavigationBar: CurvedNavigationBar(
         key: _navKey,
         index: _selectedIndex,
