@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:lottie/lottie.dart';
-// import 'login_page.dart';
 import 'main.dart';
 
 class SplashScreen extends StatefulWidget {
@@ -19,16 +18,16 @@ class _SplashScreenState extends State<SplashScreen> {
   void initState() {
     super.initState();
 
-    // Animasi titik berkedip tiap 400ms
+    // Animasi titik
     _timer = Timer.periodic(const Duration(milliseconds: 400), (timer) {
       setState(() {
-        _dotCount = (_dotCount + 1) % 4; // 0,1,2,3 → ulang
+        _dotCount = (_dotCount + 1) % 4;
       });
     });
 
-    // Setelah 5 detik ke halaman login
+    // Setelah 5 detik → pindah halaman
     Future.delayed(const Duration(seconds: 5), () {
-      _timer?.cancel(); // hentikan animasi titik
+      _timer?.cancel();
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (_) => const MainNavigation()),
@@ -54,7 +53,7 @@ class _SplashScreenState extends State<SplashScreen> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              // === 🚗 Animasi mobil merah ===
+              // Animasi Lottie
               Padding(
                 padding: const EdgeInsets.only(top: 40),
                 child: Lottie.asset(
@@ -76,6 +75,7 @@ class _SplashScreenState extends State<SplashScreen> {
                   fontSize: 22,
                 ),
               ),
+
               const SizedBox(height: 8),
 
               const Text(
@@ -90,7 +90,7 @@ class _SplashScreenState extends State<SplashScreen> {
 
               const SizedBox(height: 40),
 
-              // === Progress bar halus ===
+              // Progress bar 5 detik
               TweenAnimationBuilder<double>(
                 tween: Tween(begin: 0, end: 1),
                 duration: const Duration(seconds: 5),
@@ -114,7 +114,7 @@ class _SplashScreenState extends State<SplashScreen> {
 
               const SizedBox(height: 30),
 
-              // === 🔄 Titik tiga animasi ===
+              // Titik bergerak
               AnimatedOpacity(
                 opacity: 1,
                 duration: const Duration(milliseconds: 300),
@@ -131,19 +131,14 @@ class _SplashScreenState extends State<SplashScreen> {
 
               const SizedBox(height: 40),
 
-              // === Footer ===
-              Column(
-                children: const [
-                  Text(
-                    "versi 1.0.0",
-                    style: TextStyle(fontSize: 12, color: Colors.black45),
-                  ),
-                  SizedBox(height: 4),
-                  Text(
-                    "© 2025 MicroSleep Ulala Project",
-                    style: TextStyle(fontSize: 12, color: Colors.black45),
-                  ),
-                ],
+              const Text(
+                "versi 1.0.0",
+                style: TextStyle(fontSize: 12, color: Colors.black45),
+              ),
+              const SizedBox(height: 4),
+              const Text(
+                "© 2025 MicroSleep Ulala Project",
+                style: TextStyle(fontSize: 12, color: Colors.black45),
               ),
             ],
           ),

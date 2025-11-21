@@ -16,6 +16,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'l10n/generated/l10n.dart';
 
 // pages
+import 'splash_screen.dart';
 import 'dashboard_page.dart';
 import 'history_page.dart';
 import 'location_page.dart';
@@ -78,7 +79,7 @@ class MyApp extends StatelessWidget {
         useMaterial3: true,
       ),
 
-      home: MainNavigation(key: mainNavKey),
+      home: const SplashScreen(),
     );
   }
 }
