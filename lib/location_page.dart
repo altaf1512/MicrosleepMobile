@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
-import 'package:firebase_database/firebase_database.dart';
 import 'package:geolocator/geolocator.dart';
 
 import 'l10n/generated/l10n.dart';
@@ -20,21 +19,17 @@ class _LokasiPageState extends State<LokasiPage> {
   GoogleMapController? mapController;
   final LatLng _defaultCenter = const LatLng(-8.1726, 113.6995);
 
-  // Firebase Vehicle Node
-  final DatabaseReference _vehicleRef =
-      FirebaseDatabase.instance.ref('vehicle');
-
-  LatLng? _firebaseVehiclePosition;
-  double _firebaseSpeed = 0.0;
+  // Posisi kendaraan = posisi HP
+  LatLng? _vehiclePosition;
+  double _vehicleSpeed = 0.0;
   String? _lastUpdateTime;
 
-  // HANDSET LOCATION (TITIK ANDA)
-  LatLng? _myPosition;
+  // Streaming lokasi HP
+  StreamSubscription<Position>? _positionStream;
 
+  // UI
   bool _isMapView = true;
   final mainColor = const Color(0xFFBA0403);
-
-  int _lastMove = 0; // throttle camera move
 
   final List<Map<String, String>> _restAreas = [
     {
@@ -58,33 +53,56 @@ class _LokasiPageState extends State<LokasiPage> {
   void initState() {
     super.initState();
     _initNotifications();
-    _listenToFirebaseVehicle();
     _initMyLocation();
   }
 
   // ============================================================
-  // 1. AMBIL LOKASI HANDSET (MY LOCATION)
+  // 1. IZIN DAN AMBIL LOKASI AWAL HP
   // ============================================================
   Future<void> _initMyLocation() async {
     await Geolocator.requestPermission();
-
     final pos = await Geolocator.getCurrentPosition();
+
     setState(() {
-      _myPosition = LatLng(pos.latitude, pos.longitude);
+      _vehiclePosition = LatLng(pos.latitude, pos.longitude);
     });
+
+    _trackMyLocation();
   }
 
-  // Untuk update realtime handset location (pergerakan user)
-  StreamSubscription<Position>? _positionStream;
-
+  // Update lokasi HP terus menerus
   void _trackMyLocation() {
-    const settings = LocationSettings(accuracy: LocationAccuracy.high);
+    const settings = LocationSettings(
+      accuracy: LocationAccuracy.high,
+      distanceFilter: 2, // update jika bergerak 2 meter
+    );
 
-    _positionStream = Geolocator.getPositionStream(locationSettings: settings)
-        .listen((Position p) {
+    _positionStream =
+        Geolocator.getPositionStream(locationSettings: settings)
+            .listen((Position p) {
+      final now = DateTime.now();
+      final formatted =
+          "${now.hour.toString().padLeft(2, '0')}:"
+          "${now.minute.toString().padLeft(2, '0')}:"
+          "${now.second.toString().padLeft(2, '0')}";
+
       setState(() {
-        _myPosition = LatLng(p.latitude, p.longitude);
+        _vehiclePosition = LatLng(p.latitude, p.longitude);
+        _vehicleSpeed = p.speed * 3.6; // m/s → km/h
+        _lastUpdateTime = formatted;
       });
+
+      // Gerakkan kamera mengikuti HP
+      if (mapController != null) {
+        mapController!.animateCamera(
+          CameraUpdate.newCameraPosition(
+            CameraPosition(
+              target: LatLng(p.latitude, p.longitude),
+              zoom: 16,
+            ),
+          ),
+        );
+      }
     });
   }
 
@@ -111,49 +129,10 @@ class _LokasiPageState extends State<LokasiPage> {
   }
 
   // ============================================================
-  // 3. LISTEN FIREBASE VEHICLE
-  // ============================================================
-  void _listenToFirebaseVehicle() {
-    _vehicleRef.onValue.listen((event) {
-      final data = event.snapshot.value as Map?;
-      if (data != null && mounted) {
-        // SAFE PARSE
-        final lat = double.tryParse(data['latitude'].toString()) ?? 0.0;
-        final lon = double.tryParse(data['longitude'].toString()) ?? 0.0;
-        final spd = double.tryParse(data['speed'].toString()) ?? 0.0;
-
-        final now = DateTime.now();
-        final formatted =
-            "${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}:${now.second.toString().padLeft(2, '0')}";
-
-        setState(() {
-          _firebaseVehiclePosition = LatLng(lat, lon);
-          _firebaseSpeed = spd;
-          _lastUpdateTime = formatted;
-        });
-
-        // ============= THROTTLE CAMERA UPDATE ================
-        final t = DateTime.now().millisecondsSinceEpoch;
-        if (mapController != null && t - _lastMove > 1500) {
-          _lastMove = t;
-          mapController!.animateCamera(
-            CameraUpdate.newCameraPosition(
-              CameraPosition(target: LatLng(lat, lon), zoom: 16),
-            ),
-          );
-        }
-      }
-    });
-  }
-
-  // ============================================================
-  // 4. GOOGLE MAP CREATED
+  // 3. GOOGLE MAP CREATED
   // ============================================================
   void _onMapCreated(GoogleMapController controller) {
     mapController = controller;
-
-    // Start tracking handset position
-    _trackMyLocation();
   }
 
   @override
@@ -180,7 +159,8 @@ class _LokasiPageState extends State<LokasiPage> {
             Expanded(
               child: AnimatedSwitcher(
                 duration: const Duration(milliseconds: 400),
-                child: _isMapView ? _buildMapView(loc) : _buildListView(loc),
+                child:
+                    _isMapView ? _buildMapView(loc) : _buildListView(loc),
               ),
             ),
 
@@ -289,7 +269,7 @@ class _LokasiPageState extends State<LokasiPage> {
   }
 
   // ============================================================
-  // MAP VIEW (DENGAN TITIK KAMU SENDIRI!)
+  // MAP VIEW
   // ============================================================
   Widget _buildMapView(S loc) {
     return Stack(
@@ -301,27 +281,17 @@ class _LokasiPageState extends State<LokasiPage> {
                 initialCameraPosition:
                     CameraPosition(target: _defaultCenter, zoom: 14),
 
-                myLocationEnabled: true,   // TIKTIK KAMU
+                myLocationEnabled: true,
                 myLocationButtonEnabled: true,
 
                 zoomControlsEnabled: true,
                 markers: {
-                  // Marker Lokasi Firebase Vehicle
-                  if (_firebaseVehiclePosition != null)
+                  if (_vehiclePosition != null)
                     Marker(
                       markerId: const MarkerId('vehicle'),
-                      position: _firebaseVehiclePosition!,
+                      position: _vehiclePosition!,
                       icon: BitmapDescriptor.defaultMarkerWithHue(
                           BitmapDescriptor.hueBlue),
-                    ),
-
-                  // Marker Lokasi Handset Kamu
-                  if (_myPosition != null)
-                    Marker(
-                      markerId: const MarkerId('myLocation'),
-                      position: _myPosition!,
-                      icon: BitmapDescriptor.defaultMarkerWithHue(
-                          BitmapDescriptor.hueRed),
                     ),
                 },
               ),
@@ -337,7 +307,7 @@ class _LokasiPageState extends State<LokasiPage> {
               color: Colors.white.withOpacity(0.95),
               borderRadius: BorderRadius.circular(14),
             ),
-            child: _firebaseVehiclePosition == null
+            child: _vehiclePosition == null
                 ? Text(loc.location_waiting_data)
                 : Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -346,13 +316,16 @@ class _LokasiPageState extends State<LokasiPage> {
                           style: const TextStyle(
                               fontWeight: FontWeight.bold, fontSize: 15)),
                       Text(
-                          "${loc.location_latitude}: ${_firebaseVehiclePosition!.latitude.toStringAsFixed(6)}"),
+                          "${loc.location_latitude}: ${_vehiclePosition!.latitude.toStringAsFixed(6)}"),
                       Text(
-                          "${loc.location_longitude}: ${_firebaseVehiclePosition!.longitude.toStringAsFixed(6)}"),
-                      Text("${loc.location_speed}: ${_firebaseSpeed.toStringAsFixed(1)} km/h"),
-                      Text("${loc.location_last_update} ${_lastUpdateTime ?? '--:--:--'}",
-                          style:
-                              const TextStyle(color: Colors.grey, fontStyle: FontStyle.italic)),
+                          "${loc.location_longitude}: ${_vehiclePosition!.longitude.toStringAsFixed(6)}"),
+                      Text(
+                          "${loc.location_speed}: ${_vehicleSpeed.toStringAsFixed(1)} km/h"),
+                      Text(
+                          "${loc.location_last_update} ${_lastUpdateTime ?? '--:--:--'}",
+                          style: const TextStyle(
+                              color: Colors.grey,
+                              fontStyle: FontStyle.italic)),
                     ],
                   ),
           ),
@@ -362,7 +335,7 @@ class _LokasiPageState extends State<LokasiPage> {
   }
 
   // ============================================================
-  // LIST VIEW
+  // LIST VIEW (REST AREA)
   // ============================================================
   Widget _buildListView(S loc) {
     return ListView.builder(

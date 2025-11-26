@@ -14,13 +14,14 @@
 
     <application
         android:name="${applicationName}"
-        android:label="Microsleep Guard"
+        android:label="RAHMATT"
         android:icon="@mipmap/ic_launcher">
 
         <!-- GOOGLE MAPS API -->
         <meta-data
             android:name="com.google.android.geo.API_KEY"
-            android:value="YOUR_API_KEY_HERE"/>
+            android:value="AIzaSyB9SgJMvW_aouTrq7YHuKz-x-qVKwd-eok" />
+            
 
         <!-- ======================================= -->
         <!--             MAIN ACTIVITY               -->
