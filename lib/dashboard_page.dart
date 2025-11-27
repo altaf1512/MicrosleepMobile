@@ -25,12 +25,19 @@ class _DashboardPageState extends State<DashboardPage> {
   Position? _currentPosition;
   String currentTime = "--:--:--";
   String currentDate = "Loading...";
+
   Timer? _timer;
+  Timer? _microsleepTimer;
 
   @override
   void initState() {
     super.initState();
     _initSetup();
+
+    // Timer untuk force rebuild durasi microsleep tiap 1 detik
+    _microsleepTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (mounted) setState(() {});
+    });
   }
 
   Future<void> _initSetup() async {
@@ -73,6 +80,7 @@ class _DashboardPageState extends State<DashboardPage> {
   @override
   void dispose() {
     _timer?.cancel();
+    _microsleepTimer?.cancel();
     super.dispose();
   }
 
@@ -317,7 +325,7 @@ class _DashboardPageState extends State<DashboardPage> {
         child: StreamBuilder(
           stream: FirebaseDatabase.instance.ref("status").onValue,
           builder: (context, snapshot) {
-            String gps = "OFF";
+            String gps = "OFF"; // tetap dibaca, meski tidak ditampilkan
             String iot = "off";
             int bat = 0;
 
@@ -333,10 +341,10 @@ class _DashboardPageState extends State<DashboardPage> {
         ),
       );
 
+  // GPS DIHAPUS DARI UI, HANYA IOT + BATERAI
   Widget _iotContainer(String gps, String iot, int bat) {
     final loc = S.of(context);
 
-    Color gpsColor = gps == "ON" ? Colors.green : Colors.red;
     Color iotColor = iot == "on" ? Colors.green : Colors.red;
     Color batColor =
         bat < 30 ? Colors.red : bat < 60 ? Colors.orange : Colors.green;
@@ -362,12 +370,6 @@ class _DashboardPageState extends State<DashboardPage> {
             label: loc.iotDevice,
             value: iot.toUpperCase(),
             color: iotColor,
-          ),
-          _statusItem(
-            icon: LucideIcons.mapPin,
-            label: loc.gps,
-            value: gps.toUpperCase(),
-            color: gpsColor,
           ),
           _statusItem(
             icon: LucideIcons.battery,
@@ -412,7 +414,7 @@ class _DashboardPageState extends State<DashboardPage> {
   }
 
   // ======================================================
-  // DURASI MICROSLEEP (status_user)
+  // DURASI MICROSLEEP
   // ======================================================
   Widget _travelStats() => Padding(
         padding: const EdgeInsets.symmetric(horizontal: 18),
@@ -424,8 +426,20 @@ class _DashboardPageState extends State<DashboardPage> {
 
             if (snapshot.hasData && snapshot.data!.snapshot.value != null) {
               final data = snapshot.data!.snapshot.value as Map;
-              state = data["state"]?.toString() ?? "normal";
-              startMillis = int.tryParse(data["timestamp"]?.toString() ?? "0");
+
+              final rawState = data["state"];
+              if (rawState != null) {
+                state = rawState.toString();
+              }
+
+              final ts = data["timestamp"];
+              if (ts is int) {
+                startMillis = ts;
+              } else if (ts is double) {
+                startMillis = ts.toInt();
+              } else if (ts is String) {
+                startMillis = int.tryParse(ts);
+              }
             }
 
             return _travelStatsContainer(state, startMillis);
@@ -437,13 +451,17 @@ class _DashboardPageState extends State<DashboardPage> {
     final loc = S.of(context);
 
     int durasi = 0;
-    if (state.toLowerCase() == "microsleep" && startMillis != null) {
-      durasi =
-          ((DateTime.now().millisecondsSinceEpoch - startMillis) / 1000).floor();
+    final normalized = state.toLowerCase().trim();
+
+    if (normalized == "microsleep" && startMillis != null && startMillis > 0) {
+      final nowMs = DateTime.now().millisecondsSinceEpoch;
+      if (nowMs > startMillis) {
+        durasi = ((nowMs - startMillis) / 1000).floor();
+      }
     }
 
     final statusColor =
-        state.toLowerCase() == "microsleep" ? Colors.red : Colors.green;
+        normalized == "microsleep" ? Colors.red : Colors.green;
 
     return Row(
       children: [
@@ -458,7 +476,7 @@ class _DashboardPageState extends State<DashboardPage> {
         const SizedBox(width: 14),
         Expanded(
           child: _infoBox(
-            icon: state == "microsleep"
+            icon: normalized == "microsleep"
                 ? LucideIcons.alertTriangle
                 : LucideIcons.checkCircle,
             label: loc.driverStatus,
@@ -550,14 +568,24 @@ class _DashboardPageState extends State<DashboardPage> {
     final snap = await dbState.get();
     if (!snap.exists || snap.value.toString() != "microsleep") return;
 
-    int? startMillis =
-        int.tryParse((await dbTime.get()).value.toString());
+    int? startMillis;
+    final ts = (await dbTime.get()).value;
+    if (ts is int) {
+      startMillis = ts;
+    } else if (ts is double) {
+      startMillis = ts.toInt();
+    } else if (ts is String) {
+      startMillis = int.tryParse(ts);
+    }
 
     await dbState.set("normal");
 
     double durasi = 0;
-    if (startMillis != null) {
-      durasi = (DateTime.now().millisecondsSinceEpoch - startMillis) / 1000;
+    if (startMillis != null && startMillis > 0) {
+      final nowMs = DateTime.now().millisecondsSinceEpoch;
+      if (nowMs > startMillis) {
+        durasi = (nowMs - startMillis) / 1000.0;
+      }
     }
 
     await dbHistory.push().set({

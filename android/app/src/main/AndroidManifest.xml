@@ -14,7 +14,7 @@
 
     <application
         android:name="${applicationName}"
-        android:label="RAHMATT"
+        android:label=""
         android:icon="@mipmap/ic_launcher">
 
         <!-- GOOGLE MAPS API -->
