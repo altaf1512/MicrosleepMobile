@@ -5,8 +5,11 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:url_launcher/url_launcher_string.dart';
 
 import 'l10n/generated/l10n.dart';
+import 'services/distance.dart';
+import 'services/lokasi_data.dart';
 
 class LokasiPage extends StatefulWidget {
   const LokasiPage({super.key});
@@ -30,21 +33,6 @@ class _LokasiPageState extends State<LokasiPage> {
   // UI
   bool _isMapView = true;
   final mainColor = const Color(0xFFBA0403);
-
-  final List<Map<String, String>> _restAreas = [
-    {
-      "name": "restarea_1",
-      "type": "restarea_type",
-      "image":
-          "https://images.unsplash.com/photo-1689181482780-a6fe3c7b137f",
-    },
-    {
-      "name": "restarea_2",
-      "type": "restarea_type",
-      "image":
-          "https://images.unsplash.com/photo-1638270387990-32897e903002",
-    },
-  ];
 
   final FlutterLocalNotificationsPlugin _notifications =
       FlutterLocalNotificationsPlugin();
@@ -74,7 +62,7 @@ class _LokasiPageState extends State<LokasiPage> {
   void _trackMyLocation() {
     const settings = LocationSettings(
       accuracy: LocationAccuracy.high,
-      distanceFilter: 2, // update jika bergerak 2 meter
+      distanceFilter: 2, 
     );
 
     _positionStream =
@@ -88,11 +76,10 @@ class _LokasiPageState extends State<LokasiPage> {
 
       setState(() {
         _vehiclePosition = LatLng(p.latitude, p.longitude);
-        _vehicleSpeed = p.speed * 3.6; // m/s → km/h
+        _vehicleSpeed = p.speed * 3.6; 
         _lastUpdateTime = formatted;
       });
 
-      // Gerakkan kamera mengikuti HP
       if (mapController != null) {
         mapController!.animateCamera(
           CameraUpdate.newCameraPosition(
@@ -153,7 +140,6 @@ class _LokasiPageState extends State<LokasiPage> {
       body: SafeArea(
         child: Column(
           children: [
-            _buildSearchBar(loc),
             _buildToggleButtons(loc),
             const SizedBox(height: 12),
             Expanded(
@@ -188,43 +174,7 @@ class _LokasiPageState extends State<LokasiPage> {
     );
   }
 
-  // ============================================================
-  // SEARCH BAR
-  // ============================================================
-  Widget _buildSearchBar(S loc) {
-    return Padding(
-      padding: const EdgeInsets.all(16),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(14),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.05),
-              blurRadius: 6,
-              offset: const Offset(0, 3),
-            ),
-          ],
-        ),
-        child: Row(
-          children: [
-            const Icon(LucideIcons.search, color: Colors.grey),
-            const SizedBox(width: 8),
-            Expanded(
-              child: TextField(
-                decoration: InputDecoration(
-                  hintText: loc.location_search_hint,
-                  border: InputBorder.none,
-                ),
-              ),
-            ),
-            const Icon(LucideIcons.slidersHorizontal, color: Colors.grey),
-          ],
-        ),
-      ),
-    );
-  }
+ 
 
   // ============================================================
   // TOGGLE BUTTONS
@@ -269,7 +219,7 @@ class _LokasiPageState extends State<LokasiPage> {
   }
 
   // ============================================================
-  // MAP VIEW
+  // MAP VIEW (TIDAK DIUBAH SAMA SEKALI)
   // ============================================================
   Widget _buildMapView(S loc) {
     return Stack(
@@ -335,14 +285,36 @@ class _LokasiPageState extends State<LokasiPage> {
   }
 
   // ============================================================
-  // LIST VIEW (REST AREA)
+  // LIST VIEW (REST AREA / SPBU / MASJID TERDEKAT – OFFLINE)
   // ============================================================
   Widget _buildListView(S loc) {
+    if (_vehiclePosition == null) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    final userLat = _vehiclePosition!.latitude;
+    final userLng = _vehiclePosition!.longitude;
+
+    // Hitung jarak semua lokasi offline
+    final sorted = offlineLokasiList.map((item) {
+      final jarak = hitungJarakKm(
+        userLat,
+        userLng,
+        item.lat,
+        item.lng,
+      );
+      return {"item": item, "jarak": jarak};
+    }).toList();
+
+    sorted.sort(
+        (a, b) => (a["jarak"] as double).compareTo(b["jarak"] as double));
+
     return ListView.builder(
       padding: const EdgeInsets.all(16),
-      itemCount: _restAreas.length,
-      itemBuilder: (context, index) {
-        final area = _restAreas[index];
+      itemCount: sorted.length,
+      itemBuilder: (context, i) {
+        final item = sorted[i]["item"] as LokasiItem;
+        final jarak = sorted[i]["jarak"] as double;
 
         return Container(
           margin: const EdgeInsets.only(bottom: 16),
@@ -351,43 +323,50 @@ class _LokasiPageState extends State<LokasiPage> {
             borderRadius: BorderRadius.circular(16),
           ),
           child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               ClipRRect(
                 borderRadius:
                     const BorderRadius.vertical(top: Radius.circular(16)),
-                child: Image.network(area['image']!,
-                    height: 160, width: double.infinity, fit: BoxFit.cover),
+                child: Image.network(
+                  item.image,
+                  height: 160,
+                  width: double.infinity,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, __, ___) => Container(
+                    height: 160,
+                    color: Colors.grey[300],
+                    child: const Center(child: Icon(Icons.image)),
+                  ),
+                ),
               ),
               Padding(
                 padding: const EdgeInsets.all(16),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(area['name'] == "restarea_1"
-                        ? loc.restarea_1
-                        : loc.restarea_2),
-                    Text(loc.restarea_type),
-                    const SizedBox(height: 4),
-                    Row(
-                      children: [
-                        const Icon(LucideIcons.clock,
-                            size: 14, color: Colors.grey),
-                        const SizedBox(width: 4),
-                        Text(loc.restarea_24hours,
-                            style: const TextStyle(fontSize: 12)),
-                      ],
-                    ),
+                    Text(item.name,
+                        style: const TextStyle(
+                            fontSize: 16, fontWeight: FontWeight.bold)),
+                    Text(item.category.toUpperCase(),
+                        style: const TextStyle(fontSize: 12)),
                     const SizedBox(height: 6),
-                    Wrap(
-                      spacing: 10,
-                      children: [
-                        Text(loc.facility_toilet),
-                        Text(loc.facility_food),
-                        Text(loc.facility_parking),
-                        Text(loc.facility_fuel),
-                        Text(loc.facility_atm),
-                      ],
-                    ),
+                    Text("${jarak.toStringAsFixed(2)} km dari lokasi Anda"),
+                    const SizedBox(height: 10),
+                    ElevatedButton.icon(
+                      onPressed: () {
+                        final url =
+                            "https://www.google.com/maps/dir/?api=1&destination=${item.lat},${item.lng}&travelmode=driving";
+                        launchUrlString(url,
+                            mode: LaunchMode.externalApplication);
+                      },
+                      icon: const Icon(Icons.navigation, color: Colors.white),
+                      label: const Text("Arahkan ke lokasi ini",
+                          style: TextStyle(color: Colors.white)),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.blue,
+                      ),
+                    )
                   ],
                 ),
               )
