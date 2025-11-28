@@ -20,17 +20,15 @@ class LokasiPage extends StatefulWidget {
 
 class _LokasiPageState extends State<LokasiPage> {
   GoogleMapController? mapController;
+
   final LatLng _defaultCenter = const LatLng(-8.1726, 113.6995);
 
-  // Posisi kendaraan = posisi HP
   LatLng? _vehiclePosition;
   double _vehicleSpeed = 0.0;
   String? _lastUpdateTime;
 
-  // Streaming lokasi HP
   StreamSubscription<Position>? _positionStream;
 
-  // UI
   bool _isMapView = true;
   final mainColor = const Color(0xFFBA0403);
 
@@ -45,7 +43,7 @@ class _LokasiPageState extends State<LokasiPage> {
   }
 
   // ============================================================
-  // 1. IZIN DAN AMBIL LOKASI AWAL HP
+  // Lokasi HP
   // ============================================================
   Future<void> _initMyLocation() async {
     await Geolocator.requestPermission();
@@ -58,11 +56,10 @@ class _LokasiPageState extends State<LokasiPage> {
     _trackMyLocation();
   }
 
-  // Update lokasi HP terus menerus
   void _trackMyLocation() {
     const settings = LocationSettings(
       accuracy: LocationAccuracy.high,
-      distanceFilter: 2, 
+      distanceFilter: 2,
     );
 
     _positionStream =
@@ -76,28 +73,27 @@ class _LokasiPageState extends State<LokasiPage> {
 
       setState(() {
         _vehiclePosition = LatLng(p.latitude, p.longitude);
-        _vehicleSpeed = p.speed * 3.6; 
+        _vehicleSpeed = p.speed * 3.6;
         _lastUpdateTime = formatted;
       });
 
-      if (mapController != null) {
-        mapController!.animateCamera(
-          CameraUpdate.newCameraPosition(
-            CameraPosition(
-              target: LatLng(p.latitude, p.longitude),
-              zoom: 16,
-            ),
+      mapController?.animateCamera(
+        CameraUpdate.newCameraPosition(
+          CameraPosition(
+            target: LatLng(p.latitude, p.longitude),
+            zoom: 16,
           ),
-        );
-      }
+        ),
+      );
     });
   }
 
   // ============================================================
-  // 2. NOTIFICATION INIT
+  // Notifikasi
   // ============================================================
   Future<void> _initNotifications() async {
-    const androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
+    const androidSettings =
+        AndroidInitializationSettings('@mipmap/ic_launcher');
     const settings = InitializationSettings(android: androidSettings);
     await _notifications.initialize(settings);
   }
@@ -116,7 +112,7 @@ class _LokasiPageState extends State<LokasiPage> {
   }
 
   // ============================================================
-  // 3. GOOGLE MAP CREATED
+  // MAP init
   // ============================================================
   void _onMapCreated(GoogleMapController controller) {
     mapController = controller;
@@ -129,7 +125,7 @@ class _LokasiPageState extends State<LokasiPage> {
   }
 
   // ============================================================
-  //                UI BUILD STARTS HERE
+  // UI MAIN
   // ============================================================
   @override
   Widget build(BuildContext context) {
@@ -140,17 +136,14 @@ class _LokasiPageState extends State<LokasiPage> {
       body: SafeArea(
         child: Column(
           children: [
-            _buildToggleButtons(loc),
+            _buildToggle(loc),
             const SizedBox(height: 12),
             Expanded(
               child: AnimatedSwitcher(
                 duration: const Duration(milliseconds: 400),
-                child:
-                    _isMapView ? _buildMapView(loc) : _buildListView(loc),
+                child: _isMapView ? _buildMapView(loc) : _buildListView(loc),
               ),
             ),
-
-            // TEST ALARM BUTTON
             Padding(
               padding: const EdgeInsets.all(12),
               child: ElevatedButton.icon(
@@ -163,8 +156,8 @@ class _LokasiPageState extends State<LokasiPage> {
                     style: const TextStyle(color: Colors.white)),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: mainColor,
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 20, vertical: 10),
                 ),
               ),
             ),
@@ -174,12 +167,10 @@ class _LokasiPageState extends State<LokasiPage> {
     );
   }
 
- 
-
   // ============================================================
-  // TOGGLE BUTTONS
+  // TOGGLE VIEW
   // ============================================================
-  Widget _buildToggleButtons(S loc) {
+  Widget _buildToggle(S loc) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Row(
@@ -219,73 +210,32 @@ class _LokasiPageState extends State<LokasiPage> {
   }
 
   // ============================================================
-  // MAP VIEW (TIDAK DIUBAH SAMA SEKALI)
+  // MAP VIEW
   // ============================================================
   Widget _buildMapView(S loc) {
-    return Stack(
-      children: [
-        kIsWeb
-            ? const Center(child: Text("Web not supported"))
-            : GoogleMap(
-                onMapCreated: _onMapCreated,
-                initialCameraPosition:
-                    CameraPosition(target: _defaultCenter, zoom: 14),
-
-                myLocationEnabled: true,
-                myLocationButtonEnabled: true,
-
-                zoomControlsEnabled: true,
-                markers: {
-                  if (_vehiclePosition != null)
-                    Marker(
-                      markerId: const MarkerId('vehicle'),
-                      position: _vehiclePosition!,
-                      icon: BitmapDescriptor.defaultMarkerWithHue(
-                          BitmapDescriptor.hueBlue),
-                    ),
-                },
-              ),
-
-        // PANEL INFO
-        Positioned(
-          top: 12,
-          left: 12,
-          right: 12,
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.95),
-              borderRadius: BorderRadius.circular(14),
-            ),
-            child: _vehiclePosition == null
-                ? Text(loc.location_waiting_data)
-                : Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text("🌍 ${loc.location_panel_title}",
-                          style: const TextStyle(
-                              fontWeight: FontWeight.bold, fontSize: 15)),
-                      Text(
-                          "${loc.location_latitude}: ${_vehiclePosition!.latitude.toStringAsFixed(6)}"),
-                      Text(
-                          "${loc.location_longitude}: ${_vehiclePosition!.longitude.toStringAsFixed(6)}"),
-                      Text(
-                          "${loc.location_speed}: ${_vehicleSpeed.toStringAsFixed(1)} km/h"),
-                      Text(
-                          "${loc.location_last_update} ${_lastUpdateTime ?? '--:--:--'}",
-                          style: const TextStyle(
-                              color: Colors.grey,
-                              fontStyle: FontStyle.italic)),
-                    ],
-                  ),
-          ),
-        ),
-      ],
-    );
+    return kIsWeb
+        ? const Center(child: Text("Web not supported"))
+        : GoogleMap(
+            onMapCreated: _onMapCreated,
+            initialCameraPosition:
+                CameraPosition(target: _defaultCenter, zoom: 14),
+            myLocationEnabled: true,
+            myLocationButtonEnabled: true,
+            zoomControlsEnabled: true,
+            markers: {
+              if (_vehiclePosition != null)
+                Marker(
+                  markerId: const MarkerId('vehicle'),
+                  position: _vehiclePosition!,
+                  icon: BitmapDescriptor.defaultMarkerWithHue(
+                      BitmapDescriptor.hueBlue),
+                ),
+            },
+          );
   }
 
   // ============================================================
-  // LIST VIEW (REST AREA / SPBU / MASJID TERDEKAT – OFFLINE)
+  // LIST VIEW — OFFLINE DATA
   // ============================================================
   Widget _buildListView(S loc) {
     if (_vehiclePosition == null) {
@@ -295,7 +245,7 @@ class _LokasiPageState extends State<LokasiPage> {
     final userLat = _vehiclePosition!.latitude;
     final userLng = _vehiclePosition!.longitude;
 
-    // Hitung jarak semua lokasi offline
+    // Mapping + mengembalikan Map
     final sorted = offlineLokasiList.map((item) {
       final jarak = hitungJarakKm(
         userLat,
@@ -306,15 +256,22 @@ class _LokasiPageState extends State<LokasiPage> {
       return {"item": item, "jarak": jarak};
     }).toList();
 
+    // Sort dari jarak terdekat
     sorted.sort(
-        (a, b) => (a["jarak"] as double).compareTo(b["jarak"] as double));
+      (a, b) =>
+          (a["jarak"] as double).compareTo(b["jarak"] as double),
+    );
 
     return ListView.builder(
       padding: const EdgeInsets.all(16),
       itemCount: sorted.length,
-      itemBuilder: (context, i) {
-        final item = sorted[i]["item"] as LokasiItem;
-        final jarak = sorted[i]["jarak"] as double;
+      itemBuilder: (context, index) {
+        // FIX PALING PENTING
+        final LokasiItem item =
+            sorted[index]["item"] as LokasiItem;
+
+        final double jarak =
+            sorted[index]["jarak"] as double;
 
         return Container(
           margin: const EdgeInsets.only(bottom: 16),
@@ -325,21 +282,18 @@ class _LokasiPageState extends State<LokasiPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // ===== GAMBAR ASSET =====
               ClipRRect(
                 borderRadius:
                     const BorderRadius.vertical(top: Radius.circular(16)),
-                child: Image.network(
+                child: Image.asset(
                   item.image,
                   height: 160,
                   width: double.infinity,
                   fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) => Container(
-                    height: 160,
-                    color: Colors.grey[300],
-                    child: const Center(child: Icon(Icons.image)),
-                  ),
                 ),
               ),
+
               Padding(
                 padding: const EdgeInsets.all(16),
                 child: Column(
@@ -348,10 +302,13 @@ class _LokasiPageState extends State<LokasiPage> {
                     Text(item.name,
                         style: const TextStyle(
                             fontSize: 16, fontWeight: FontWeight.bold)),
+
                     Text(item.category.toUpperCase(),
                         style: const TextStyle(fontSize: 12)),
+
                     const SizedBox(height: 6),
                     Text("${jarak.toStringAsFixed(2)} km dari lokasi Anda"),
+
                     const SizedBox(height: 10),
                     ElevatedButton.icon(
                       onPressed: () {
@@ -366,10 +323,10 @@ class _LokasiPageState extends State<LokasiPage> {
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.blue,
                       ),
-                    )
+                    ),
                   ],
                 ),
-              )
+              ),
             ],
           ),
         );

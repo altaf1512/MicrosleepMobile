@@ -54,6 +54,7 @@ flutter:
   uses-material-design: true
 
   assets:
+    - assets/
     - assets/monyet.jpeg
     - assets/gambar.png
     - assets/animation/Red Car Drive.json
@@ -62,3 +63,4 @@ flutter:
     - assets/animation/Black Check.json
     - assets/flag_id.png
     - assets/flag_us.png
+
