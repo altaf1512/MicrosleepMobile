@@ -57,6 +57,7 @@ flutter:
     - assets/
     - assets/monyet.jpeg
     - assets/gambar.png
+    - assets/gambar2.png
     - assets/animation/Red Car Drive.json
     - assets/animation/sign in red.json
     - assets/animation/red 1.json

@@ -171,43 +171,61 @@ class _LokasiPageState extends State<LokasiPage> {
   // TOGGLE VIEW
   // ============================================================
   Widget _buildToggle(S loc) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Row(
-        children: [
-          Expanded(
-            child: ElevatedButton.icon(
-              onPressed: () => setState(() => _isMapView = true),
-              icon: Icon(LucideIcons.map,
-                  color: _isMapView ? Colors.white : mainColor),
-              label: Text(loc.location_tab_map,
+  return Column(
+    children: [
+      const SizedBox(height: 20),  // <<< ini menurunkan tombol
+      Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        child: Row(
+          children: [
+            Expanded(
+              child: ElevatedButton.icon(
+                onPressed: () => setState(() => _isMapView = true),
+                icon: Icon(
+                  LucideIcons.map,
+                  color: _isMapView ? Colors.white : mainColor,
+                ),
+                label: Text(
+                  loc.location_tab_map,
                   style: TextStyle(
-                      color: _isMapView ? Colors.white : mainColor)),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: _isMapView ? mainColor : Colors.white,
-                side: BorderSide(color: mainColor),
+                    color: _isMapView ? Colors.white : mainColor,
+                  ),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor:
+                      _isMapView ? mainColor : Colors.white,
+                  side: BorderSide(color: mainColor),
+                ),
               ),
             ),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: ElevatedButton.icon(
-              onPressed: () => setState(() => _isMapView = false),
-              icon: Icon(LucideIcons.list,
-                  color: !_isMapView ? Colors.white : mainColor),
-              label: Text(loc.location_tab_list,
+            const SizedBox(width: 10),
+            Expanded(
+              child: ElevatedButton.icon(
+                onPressed: () => setState(() => _isMapView = false),
+                icon: Icon(
+                  LucideIcons.list,
+                  color: !_isMapView ? Colors.white : mainColor,
+                ),
+                label: Text(
+                  loc.location_tab_list,
                   style: TextStyle(
-                      color: !_isMapView ? Colors.white : mainColor)),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: !_isMapView ? mainColor : Colors.white,
-                side: BorderSide(color: mainColor),
+                    color: !_isMapView ? Colors.white : mainColor,
+                  ),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor:
+                      !_isMapView ? mainColor : Colors.white,
+                  side: BorderSide(color: mainColor),
+                ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
-    );
-  }
+    ],
+  );
+}
+
 
   // ============================================================
   // MAP VIEW

@@ -136,7 +136,7 @@ class _DashboardPageState extends State<DashboardPage> {
                 end: Alignment.bottomRight,
               ),
               image: const DecorationImage(
-                image: AssetImage("assets/gambar.png"),
+                image: AssetImage("assets/gambar2.png"),
                 fit: BoxFit.cover,
                 opacity: 0.25,
               ),
