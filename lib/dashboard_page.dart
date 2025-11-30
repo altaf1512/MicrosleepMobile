@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:provider/provider.dart';
+import 'package:http/http.dart' as http;
 
 import 'services/language_service.dart';
 import 'l10n/generated/l10n.dart';
@@ -22,6 +23,12 @@ class DashboardPage extends StatefulWidget {
 class _DashboardPageState extends State<DashboardPage> {
   final mainColor = const Color(0xFFBA0403);
 
+  // ============================================
+  // URL BACKEND FLASK (GANTI IP KAMU DI SINI!!)
+  // ============================================
+  final String flaskBaseUrl = "http://192.168.1.4:5000";
+
+
   Position? _currentPosition;
   String currentTime = "--:--:--";
   String currentDate = "Loading...";
@@ -34,7 +41,6 @@ class _DashboardPageState extends State<DashboardPage> {
     super.initState();
     _initSetup();
 
-    // Timer untuk force rebuild durasi microsleep tiap 1 detik
     _microsleepTimer = Timer.periodic(const Duration(seconds: 1), (_) {
       if (mounted) setState(() {});
     });
@@ -84,9 +90,9 @@ class _DashboardPageState extends State<DashboardPage> {
     super.dispose();
   }
 
-  // =====================================================
+  // =======================================================
   // MAIN UI
-  // =====================================================
+  // =======================================================
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -113,9 +119,9 @@ class _DashboardPageState extends State<DashboardPage> {
     );
   }
 
-  // ======================================================
-  // HEADER UI
-  // ======================================================
+  // =======================================================
+  // HEADER
+  // =======================================================
   Widget _heroHeader() {
     final loc = S.of(context);
 
@@ -317,20 +323,21 @@ class _DashboardPageState extends State<DashboardPage> {
     );
   }
 
-  // ======================================================
-  // STATUS DEVICE
-  // ======================================================
+  // =====================================================
+  // IOT STATUS
+  // =====================================================
   Widget _iotStatus() => Padding(
         padding: const EdgeInsets.symmetric(horizontal: 18),
         child: StreamBuilder(
           stream: FirebaseDatabase.instance.ref("status").onValue,
           builder: (context, snapshot) {
-            String gps = "OFF"; // tetap dibaca, meski tidak ditampilkan
+            String gps = "OFF";
             String iot = "off";
             int bat = 0;
 
             if (snapshot.hasData && snapshot.data!.snapshot.value != null) {
               final data = snapshot.data!.snapshot.value as Map;
+
               gps = data["gps"]?.toString() ?? "OFF";
               iot = data["iot"]?.toString() ?? "off";
               bat = int.tryParse(data["baterai"]?.toString() ?? "0") ?? 0;
@@ -341,7 +348,6 @@ class _DashboardPageState extends State<DashboardPage> {
         ),
       );
 
-  // GPS DIHAPUS DARI UI, HANYA IOT + BATERAI
   Widget _iotContainer(String gps, String iot, int bat) {
     final loc = S.of(context);
 
@@ -413,9 +419,9 @@ class _DashboardPageState extends State<DashboardPage> {
     );
   }
 
-  // ======================================================
+  // =====================================================
   // DURASI MICROSLEEP
-  // ======================================================
+  // =====================================================
   Widget _travelStats() => Padding(
         padding: const EdgeInsets.symmetric(horizontal: 18),
         child: StreamBuilder(
@@ -530,9 +536,9 @@ class _DashboardPageState extends State<DashboardPage> {
     );
   }
 
-  // ======================================================
-  // BUTTON STOP ALARM
-  // ======================================================
+  // =====================================================
+  // BUTTON STOP ALARM (FIX FINAL)
+  // =====================================================
   Widget _alarmButton() {
     final loc = S.of(context);
 
@@ -558,36 +564,63 @@ class _DashboardPageState extends State<DashboardPage> {
     );
   }
 
+  // =====================================================
+  // FIX FUNCTION — MATIKAN ALARM DENGAN SERVER
+  // =====================================================
   Future<void> _onAlarmPressed() async {
+    final loc = S.of(context);
+
     final dbState = FirebaseDatabase.instance.ref("status_user/state");
     final dbTime = FirebaseDatabase.instance.ref("status_user/timestamp");
     final dbHistory = FirebaseDatabase.instance.ref("microsleep_history");
-
-    final loc = S.of(context);
 
     final snap = await dbState.get();
     if (!snap.exists || snap.value.toString() != "microsleep") return;
 
     int? startMillis;
     final ts = (await dbTime.get()).value;
-    if (ts is int) {
-      startMillis = ts;
-    } else if (ts is double) {
-      startMillis = ts.toInt();
-    } else if (ts is String) {
-      startMillis = int.tryParse(ts);
+    if (ts is int) startMillis = ts;
+    else if (ts is double) startMillis = ts.toInt();
+    else if (ts is String) startMillis = int.tryParse(ts);
+
+    // ======================================================
+    // 🔥 PANGGIL SERVER UNTUK RESET
+    // ======================================================
+    try {
+      final url = Uri.parse("$flaskBaseUrl/clear_microsleep");
+      final resp = await http.post(url);
+
+      if (resp.statusCode != 200) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("Gagal menghubungi server (${resp.statusCode})"),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text("Gagal menghubungi server: $e"),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
     }
 
-    await dbState.set("normal");
-
+    // ======================================================
+    // Hitung durasi
+    // ======================================================
     double durasi = 0;
-    if (startMillis != null && startMillis > 0) {
+    if (startMillis != null) {
       final nowMs = DateTime.now().millisecondsSinceEpoch;
       if (nowMs > startMillis) {
         durasi = (nowMs - startMillis) / 1000.0;
       }
     }
 
+    // SIMPAN RIWAYAT
     await dbHistory.push().set({
       "tanggal": DateFormat('dd/MM/yyyy').format(DateTime.now()),
       "jam": DateFormat('HH:mm:ss').format(DateTime.now()),
@@ -596,22 +629,20 @@ class _DashboardPageState extends State<DashboardPage> {
           ? "Lat: ${_currentPosition!.latitude.toStringAsFixed(5)}, Lon: ${_currentPosition!.longitude.toStringAsFixed(5)}"
           : "Lokasi tidak tersedia",
       "status": "microsleep",
-      "respons": durasi,
     });
 
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text("🟢 ${loc.alarmStopped} (${durasi.toStringAsFixed(1)} detik)"),
-          backgroundColor: Colors.green,
-        ),
-      );
-    }
+    // SNACKBAR
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text("🟢 ${loc.alarmStopped} (${durasi.toStringAsFixed(1)} detik)"),
+        backgroundColor: Colors.green,
+      ),
+    );
   }
 
-  // ======================================================
-  // LANGUAGE BUTTON
-  // ======================================================
+  // =====================================================
+  // MULTILANGUAGE POPUP
+  // =====================================================
   Widget _languageButton() {
     final lang = Provider.of<LanguageService>(context);
     String code = lang.currentLocale.languageCode;
