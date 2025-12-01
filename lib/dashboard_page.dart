@@ -29,6 +29,7 @@ class _DashboardPageState extends State<DashboardPage> {
   final String flaskBaseUrl = "http://192.168.1.4:5000";
 
 
+
   Position? _currentPosition;
   String currentTime = "--:--:--";
   String currentDate = "Loading...";
@@ -438,7 +439,7 @@ class _DashboardPageState extends State<DashboardPage> {
                 state = rawState.toString();
               }
 
-              final ts = data["timestamp"];
+              final ts = data["startMillis"];
               if (ts is int) {
                 startMillis = ts;
               } else if (ts is double) {
@@ -453,46 +454,46 @@ class _DashboardPageState extends State<DashboardPage> {
         ),
       );
 
-  Widget _travelStatsContainer(String state, int? startMillis) {
-    final loc = S.of(context);
+    Widget _travelStatsContainer(String state, int? startMillis) {
+      final loc = S.of(context);
 
-    int durasi = 0;
-    final normalized = state.toLowerCase().trim();
+      int durasi = 0;
+      final normalized = state.toLowerCase().trim();
 
-    if (normalized == "microsleep" && startMillis != null && startMillis > 0) {
-      final nowMs = DateTime.now().millisecondsSinceEpoch;
-      if (nowMs > startMillis) {
-        durasi = ((nowMs - startMillis) / 1000).floor();
+      if (normalized == "microsleep" && startMillis != null && startMillis > 0) {
+        final nowMs = DateTime.now().millisecondsSinceEpoch;
+        if (nowMs > startMillis) {
+          durasi = ((nowMs - startMillis) / 1000).floor();
+        }
       }
+
+      final statusColor =
+          normalized == "microsleep" ? Colors.red : Colors.green;
+
+      return Row(
+        children: [
+          Expanded(
+            child: _infoBox(
+              icon: LucideIcons.clock,
+              label: loc.microsleepDuration,
+              value: "$durasi dtk",
+              color: mainColor,
+            ),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: _infoBox(
+              icon: normalized == "microsleep"
+                  ? LucideIcons.alertTriangle
+                  : LucideIcons.checkCircle,
+              label: loc.driverStatus,
+              value: state.toUpperCase(),
+              color: statusColor,
+            ),
+          ),
+        ],
+      );
     }
-
-    final statusColor =
-        normalized == "microsleep" ? Colors.red : Colors.green;
-
-    return Row(
-      children: [
-        Expanded(
-          child: _infoBox(
-            icon: LucideIcons.clock,
-            label: loc.microsleepDuration,
-            value: "$durasi dtk",
-            color: mainColor,
-          ),
-        ),
-        const SizedBox(width: 14),
-        Expanded(
-          child: _infoBox(
-            icon: normalized == "microsleep"
-                ? LucideIcons.alertTriangle
-                : LucideIcons.checkCircle,
-            label: loc.driverStatus,
-            value: state.toUpperCase(),
-            color: statusColor,
-          ),
-        ),
-      ],
-    );
-  }
 
   Widget _infoBox({
     required IconData icon,
@@ -571,7 +572,7 @@ class _DashboardPageState extends State<DashboardPage> {
     final loc = S.of(context);
 
     final dbState = FirebaseDatabase.instance.ref("status_user/state");
-    final dbTime = FirebaseDatabase.instance.ref("status_user/timestamp");
+    final dbTime = FirebaseDatabase.instance.ref("status_user/startMillis");
     final dbHistory = FirebaseDatabase.instance.ref("microsleep_history");
 
     final snap = await dbState.get();
